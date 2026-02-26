@@ -56,7 +56,7 @@ No extra hardware needed for the LED — the Pi's built-in ACT LED is used.
 Flash **Raspberry Pi OS Lite (64-bit, bookworm)** to the SD card, then SSH in and run:
 
 ```bash
-git clone https://github.com/your-username/betaflight-blackbox-field-sync
+git clone https://github.com/proeugene/betaflight-blackbox-field-sync
 cd betaflight-blackbox-field-sync
 sudo bash install.sh --ssid "BF-Blackbox" --password "your-password"
 ```
@@ -222,7 +222,7 @@ python -m bbsyncer --port /dev/ttyACM0 --verbose
 
 ```bash
 # Clone and set up:
-git clone https://github.com/your-username/betaflight-blackbox-field-sync
+git clone https://github.com/proeugene/betaflight-blackbox-field-sync
 cd betaflight-blackbox-field-sync
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"

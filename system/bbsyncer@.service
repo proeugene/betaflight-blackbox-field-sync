@@ -4,7 +4,7 @@
 
 [Unit]
 Description=Betaflight Blackbox Syncer (%I)
-Documentation=https://github.com/your-username/betaflight-blackbox-field-sync
+Documentation=https://github.com/proeugene/betaflight-blackbox-field-sync
 # Stop if the device disappears mid-sync
 BindsTo=dev-%i.device
 After=dev-%i.device network.target

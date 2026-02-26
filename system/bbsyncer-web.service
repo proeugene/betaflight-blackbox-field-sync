@@ -4,7 +4,7 @@
 
 [Unit]
 Description=Betaflight Blackbox Syncer Web Server
-Documentation=https://github.com/your-username/betaflight-blackbox-field-sync
+Documentation=https://github.com/proeugene/betaflight-blackbox-field-sync
 After=network.target hostapd.service
 
 [Service]
