@@ -1,0 +1,349 @@
+"""Main sync state machine — 10-step algorithm.
+
+Steps:
+  1. Wait (handled by systemd ExecStartPre)
+  2. Identify FC (MSP handshake, verify BTFL)
+  3. Query flash state (summary)
+  4. Check Pi storage
+  5. Prepare output (session dir + file)
+  6. Stream flash read → file [LED=SYNCING]
+  7. Verify integrity [LED=VERIFYING]
+  8. Write manifest
+  9. Erase FC flash [LED=ERASING]
+ 10. Signal result [LED=SUCCESS / ALREADY_EMPTY / ERROR]
+"""
+from __future__ import annotations
+
+import glob as glob_module
+import logging
+import time
+from enum import Enum, auto
+from pathlib import Path
+from typing import Optional
+
+from bbsyncer.config import Config
+from bbsyncer.fc.detector import (
+    FCBlackboxEmpty,
+    FCDetectionError,
+    FCNotBetaflight,
+    FCSDCardBlackbox,
+    detect_fc,
+)
+from bbsyncer.led.controller import LEDController, LEDState
+from bbsyncer.msp.client import MSPClient, MSPError
+from bbsyncer.msp.constants import DATAFLASH_FLAG_READY
+from bbsyncer.storage.manifest import (
+    make_session_dir,
+    update_manifest_erase,
+    write_manifest,
+)
+from bbsyncer.storage.writer import StreamWriter
+from bbsyncer.util.disk_space import free_mb
+
+log = logging.getLogger(__name__)
+
+_MAX_CONSECUTIVE_ERRORS = 5
+_ERASE_POLL_INTERVAL = 2.0   # seconds between erase polls
+
+
+class SyncResult(Enum):
+    SUCCESS = auto()
+    ALREADY_EMPTY = auto()
+    ERROR = auto()
+    DRY_RUN = auto()
+
+
+# Shared sync status — read by web server
+_current_status: dict = {"state": "idle", "progress": 0}
+
+
+def get_status() -> dict:
+    return dict(_current_status)
+
+
+def _set_status(state: str, progress: int = 0) -> None:
+    _current_status["state"] = state
+    _current_status["progress"] = progress
+
+
+class SyncOrchestrator:
+    """Runs the full blackbox sync workflow."""
+
+    def __init__(
+        self,
+        config: Config,
+        led: LEDController,
+        dry_run: bool = False,
+    ) -> None:
+        self.config = config
+        self.led = led
+        self.dry_run = dry_run
+
+    def run(self, port: str) -> SyncResult:
+        """Run the full sync workflow. Returns SyncResult."""
+        try:
+            return self._run(port)
+        except Exception as exc:
+            log.exception("Unexpected error during sync: %s", exc)
+            self.led.set_state(LEDState.ERROR_GENERAL)
+            _set_status("error")
+            return SyncResult.ERROR
+
+    def _run(self, port: str) -> SyncResult:  # noqa: C901
+        cfg = self.config
+
+        # --- Step 2: Identify FC ---
+        log.info("Step 2: Identifying FC on %s", port)
+        _set_status("identifying")
+        with MSPClient(port, cfg.serial_baud, cfg.serial_timeout) as client:
+            try:
+                fc_info = detect_fc(client)
+            except FCSDCardBlackbox as exc:
+                log.error("%s", exc)
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+            except FCNotBetaflight as exc:
+                log.error("%s", exc)
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+            except FCDetectionError as exc:
+                log.error("FC detection failed: %s", exc)
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            log.info("FC identified: variant=%r uid=%s", fc_info.variant, fc_info.uid)
+
+            # --- Step 3: Query flash state ---
+            log.info("Step 3: Querying flash state")
+            _set_status("querying")
+            try:
+                summary = client.get_dataflash_summary()
+            except MSPError as exc:
+                log.error("Failed to get flash summary: %s", exc)
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            log.info(
+                "Flash: supported=%s ready=%s used=%d total=%d",
+                summary["supported"], summary["ready"],
+                summary["used_size"], summary["total_size"],
+            )
+
+            if not summary["supported"]:
+                log.error("FC flash not supported")
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            if not summary["ready"]:
+                log.error("FC flash not ready (may be busy)")
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            used_size = summary["used_size"]
+            if used_size == 0:
+                log.info("Flash is empty — nothing to sync")
+                self.led.set_state(LEDState.ALREADY_EMPTY)
+                _set_status("idle")
+                return SyncResult.ALREADY_EMPTY
+
+            # --- Step 4: Check Pi storage ---
+            log.info("Step 4: Checking Pi storage")
+            storage_path = Path(cfg.storage_path)
+            storage_path.mkdir(parents=True, exist_ok=True)
+            required_mb = (used_size / (1024 * 1024)) + cfg.min_free_space_mb
+            available_mb = free_mb(storage_path)
+            log.info(
+                "Storage: required=%.1f MB available=%.1f MB",
+                required_mb, available_mb
+            )
+            if available_mb < required_mb:
+                log.error(
+                    "Insufficient Pi storage: %.1f MB available, %.1f MB required",
+                    available_mb, required_mb,
+                )
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            # --- Step 5: Prepare output ---
+            log.info("Step 5: Preparing output directory")
+            session_dir = make_session_dir(storage_path, fc_info)
+            bbl_path = session_dir / "raw_flash.bbl"
+            writer = StreamWriter(bbl_path)
+            writer.open()
+
+            # --- Step 6: Stream flash read ---
+            log.info(
+                "Step 6: Reading %d bytes from flash → %s",
+                used_size, bbl_path
+            )
+            self.led.set_state(LEDState.SYNCING)
+            _set_status("syncing", 0)
+
+            address = 0
+            consecutive_errors = 0
+
+            try:
+                while address < used_size:
+                    chunk_size = min(cfg.flash_chunk_size, used_size - address)
+                    try:
+                        chunk_addr, data = client.read_flash_chunk(
+                            address, chunk_size, compression=cfg.flash_read_compression
+                        )
+                    except MSPError as exc:
+                        consecutive_errors += 1
+                        log.warning(
+                            "Flash read error at 0x%08x (attempt %d/%d): %s",
+                            address, consecutive_errors, _MAX_CONSECUTIVE_ERRORS, exc
+                        )
+                        if consecutive_errors >= _MAX_CONSECUTIVE_ERRORS:
+                            log.error("Too many consecutive read errors — aborting")
+                            writer.abort()
+                            self.led.set_state(LEDState.ERROR_GENERAL)
+                            _set_status("error")
+                            return SyncResult.ERROR
+                        time.sleep(0.1)
+                        continue
+
+                    if chunk_addr != address:
+                        log.warning(
+                            "Address mismatch: expected 0x%08x got 0x%08x — retrying",
+                            address, chunk_addr
+                        )
+                        consecutive_errors += 1
+                        if consecutive_errors >= _MAX_CONSECUTIVE_ERRORS:
+                            log.error("Too many address mismatches — aborting")
+                            writer.abort()
+                            self.led.set_state(LEDState.ERROR_GENERAL)
+                            _set_status("error")
+                            return SyncResult.ERROR
+                        continue
+
+                    if not data:
+                        log.info("FC returned 0 bytes at 0x%08x — end of data", address)
+                        break
+
+                    consecutive_errors = 0
+                    writer.write(data)
+                    address += len(data)
+
+                    progress = int(address * 100 / used_size)
+                    _set_status("syncing", progress)
+                    log.debug(
+                        "Read 0x%08x / 0x%08x (%d%%)",
+                        address, used_size, progress
+                    )
+
+            except Exception as exc:
+                log.exception("Unexpected error during flash read: %s", exc)
+                writer.abort()
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            writer.close()
+            log.info(
+                "Flash read complete: %d bytes written", writer.bytes_written
+            )
+
+            # --- Step 7: Verify integrity ---
+            log.info("Step 7: Verifying integrity")
+            self.led.set_state(LEDState.VERIFYING)
+            _set_status("verifying")
+
+            if writer.bytes_written != used_size:
+                log.error(
+                    "Size mismatch: wrote %d bytes, expected %d",
+                    writer.bytes_written, used_size
+                )
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            match, file_sha256 = writer.verify_against_file()
+            if not match:
+                log.error("SHA-256 verification failed — NOT erasing FC flash")
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            log.info("Integrity OK — SHA-256: %s", file_sha256)
+
+            # --- Step 8: Write manifest ---
+            log.info("Step 8: Writing manifest")
+            write_manifest(
+                session_dir,
+                fc_info,
+                sha256=file_sha256,
+                used_size=used_size,
+                erase_completed=False,
+                erase_attempted=False,
+            )
+
+            if self.dry_run:
+                log.info("DRY RUN — skipping erase")
+                self.led.set_state(LEDState.SUCCESS)
+                _set_status("idle")
+                return SyncResult.DRY_RUN
+
+            if not cfg.erase_after_sync:
+                log.info("erase_after_sync=false — skipping erase")
+                self.led.set_state(LEDState.SUCCESS)
+                _set_status("idle")
+                return SyncResult.SUCCESS
+
+            # --- Step 9: Erase FC flash ---
+            log.info("Step 9: Erasing FC flash")
+            self.led.set_state(LEDState.ERASING)
+            _set_status("erasing")
+
+            erase_ok = self._wait_for_erase(client)
+            update_manifest_erase(session_dir, erase_completed=erase_ok)
+
+            if not erase_ok:
+                log.error("Flash erase did not complete within timeout")
+                self.led.set_state(LEDState.ERROR_GENERAL)
+                _set_status("error")
+                return SyncResult.ERROR
+
+            log.info("Flash erase confirmed")
+
+        # --- Step 10: Signal result ---
+        log.info("Step 10: Sync complete — SUCCESS")
+        self.led.set_state(LEDState.SUCCESS)
+        _set_status("idle")
+        return SyncResult.SUCCESS
+
+    def _wait_for_erase(self, client: MSPClient) -> bool:
+        """Send erase command and poll until flash is empty or timeout."""
+        client.erase_flash()
+        deadline = time.monotonic() + self.config.erase_timeout_sec
+        while time.monotonic() < deadline:
+            time.sleep(_ERASE_POLL_INTERVAL)
+            try:
+                summary = client.get_dataflash_summary()
+            except MSPError as exc:
+                log.warning("Error polling flash summary during erase: %s", exc)
+                continue
+            log.debug(
+                "Erase poll: used=%d ready=%s",
+                summary["used_size"], summary["ready"]
+            )
+            if summary["used_size"] == 0 and summary["ready"]:
+                return True
+        return False
+
+
+def auto_detect_port() -> Optional[str]:
+    """Return first available /dev/ttyACM* port, or None."""
+    ports = sorted(glob_module.glob("/dev/ttyACM*"))
+    if ports:
+        log.info("Auto-detected port: %s", ports[0])
+        return ports[0]
+    return None

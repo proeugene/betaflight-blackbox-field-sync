@@ -1,0 +1,184 @@
+"""LED state machine with sysfs and optional GPIO backends.
+
+Runs in a background thread. The main thread sets the desired state via
+`set_state()`; the LED thread executes the corresponding blink pattern.
+
+Backends:
+  sysfs  — /sys/class/leds/led0/ (Pi built-in ACT LED, no extra hardware)
+  gpio   — RPi.GPIO pin (optional external LED)
+"""
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from enum import Enum, auto
+from pathlib import Path
+from typing import Optional
+
+log = logging.getLogger(__name__)
+
+# sysfs paths for Pi built-in ACT LED
+_SYSFS_LED = Path("/sys/class/leds/led0")
+_SYSFS_BRIGHTNESS = _SYSFS_LED / "brightness"
+_SYSFS_TRIGGER = _SYSFS_LED / "trigger"
+
+
+class LEDState(Enum):
+    OFF = auto()
+    SYNCING = auto()       # 100ms on / 100ms off (5 Hz)
+    VERIFYING = auto()     # 250ms on / 250ms off (2 Hz)
+    ERASING = auto()       # 800ms on / 200ms off
+    SUCCESS = auto()       # 3× rapid blink, 2s solid, off
+    ALREADY_EMPTY = auto() # 2× slow blink, off
+    ERROR_GENERAL = auto() # SOS repeating
+    ERROR_DISCONNECTED = auto()  # triple rapid flash, repeating
+
+
+# Pattern: list of (on_ms, off_ms) pairs; None means run once (non-repeating)
+_PATTERNS: dict[LEDState, tuple[list[tuple[int, int]], bool]] = {
+    LEDState.OFF:               ([], False),
+    LEDState.SYNCING:           ([(100, 100)], True),
+    LEDState.VERIFYING:         ([(250, 250)], True),
+    LEDState.ERASING:           ([(800, 200)], True),
+    LEDState.SUCCESS:           (
+        [(50, 50), (50, 50), (50, 50), (2000, 1)],  # 3× rapid + 2s solid
+        False,
+    ),
+    LEDState.ALREADY_EMPTY:     ([(500, 500), (500, 500)], False),
+    LEDState.ERROR_GENERAL:     (
+        # SOS: 3×short, 3×long, 3×short, pause
+        [(150, 150)] * 3 + [(400, 150)] * 3 + [(150, 150)] * 3 + [(700, 700)],
+        True,
+    ),
+    LEDState.ERROR_DISCONNECTED: ([(50, 50), (50, 50), (50, 50)], True),
+}
+
+
+class LEDController:
+    """Thread-safe LED controller."""
+
+    def __init__(
+        self,
+        backend: str = "sysfs",
+        gpio_pin: int = 17,
+    ) -> None:
+        self._backend = backend
+        self._gpio_pin = gpio_pin
+        self._state = LEDState.OFF
+        self._lock = threading.Lock()
+        self._event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+
+        if backend == "gpio":
+            self._init_gpio()
+
+    def _init_gpio(self) -> None:
+        try:
+            import RPi.GPIO as GPIO  # type: ignore
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self._gpio_pin, GPIO.OUT, initial=GPIO.LOW)
+            self._gpio = GPIO
+            log.debug("GPIO LED initialized on pin %d", self._gpio_pin)
+        except ImportError:
+            log.warning("RPi.GPIO not available, falling back to sysfs")
+            self._backend = "sysfs"
+
+    def start(self) -> None:
+        """Start the background LED thread."""
+        self._running = True
+        # Disable trigger so we can control brightness directly
+        if self._backend == "sysfs":
+            self._sysfs_disable_trigger()
+        self._thread = threading.Thread(target=self._run, daemon=True, name="led")
+        self._thread.start()
+        log.debug("LED controller started (backend=%s)", self._backend)
+
+    def stop(self) -> None:
+        """Stop the LED thread and turn off the LED."""
+        self._running = False
+        self._event.set()
+        if self._thread:
+            self._thread.join(timeout=3)
+        self._set_raw(False)
+        if self._backend == "sysfs":
+            self._sysfs_restore_trigger()
+
+    def set_state(self, state: LEDState) -> None:
+        with self._lock:
+            if self._state != state:
+                log.info("LED state → %s", state.name)
+                self._state = state
+                self._event.set()
+
+    def _run(self) -> None:
+        while self._running:
+            with self._lock:
+                state = self._state
+            self._event.clear()
+            self._execute_pattern(state)
+
+    def _execute_pattern(self, state: LEDState) -> None:
+        steps, repeat = _PATTERNS[state]
+
+        if not steps:
+            self._set_raw(False)
+            self._event.wait()  # wait for state change
+            return
+
+        while True:
+            for on_ms, off_ms in steps:
+                if self._state_changed(state):
+                    return
+                self._set_raw(True)
+                if self._interruptible_sleep(on_ms / 1000.0, state):
+                    return
+                self._set_raw(False)
+                if off_ms > 0 and self._interruptible_sleep(off_ms / 1000.0, state):
+                    return
+            if not repeat:
+                self._set_raw(False)
+                self._event.wait()  # wait for next state change
+                return
+
+    def _interruptible_sleep(self, seconds: float, original_state: LEDState) -> bool:
+        """Sleep for *seconds*, return True if state changed during sleep."""
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            remaining = end - time.monotonic()
+            self._event.wait(timeout=min(remaining, 0.05))
+            if self._state_changed(original_state):
+                return True
+        return False
+
+    def _state_changed(self, original: LEDState) -> bool:
+        with self._lock:
+            return self._state != original
+
+    def _set_raw(self, on: bool) -> None:
+        if self._backend == "sysfs":
+            self._sysfs_write(on)
+        elif self._backend == "gpio":
+            try:
+                self._gpio.output(self._gpio_pin, self._gpio.HIGH if on else self._gpio.LOW)
+            except Exception as exc:
+                log.debug("GPIO write error: %s", exc)
+
+    def _sysfs_write(self, on: bool) -> None:
+        try:
+            _SYSFS_BRIGHTNESS.write_text("1" if on else "0")
+        except OSError:
+            pass  # Running on non-Pi hardware; ignore silently
+
+    def _sysfs_disable_trigger(self) -> None:
+        try:
+            _SYSFS_TRIGGER.write_text("none")
+        except OSError:
+            pass
+
+    def _sysfs_restore_trigger(self) -> None:
+        try:
+            _SYSFS_TRIGGER.write_text("mmc0")
+        except OSError:
+            pass

@@ -1,0 +1,38 @@
+# systemd template unit for bbsyncer sync service
+# Install to: /etc/systemd/system/bbsyncer@.service
+# Triggered by udev when FC is plugged in (e.g. bbsyncer@ttyACM0.service)
+
+[Unit]
+Description=Betaflight Blackbox Syncer (%I)
+Documentation=https://github.com/your-username/betaflight-blackbox-field-sync
+# Stop if the device disappears mid-sync
+BindsTo=dev-%i.device
+After=dev-%i.device network.target
+# Only one sync at a time
+Conflicts=bbsyncer@*.service
+
+[Service]
+Type=oneshot
+# Wait for USB enumeration to stabilise
+ExecStartPre=/bin/sleep 3
+
+User=bbsyncer
+Group=dialout
+
+# Install location
+WorkingDirectory=/opt/bbsyncer
+ExecStart=/opt/bbsyncer/venv/bin/python -m bbsyncer --port /dev/%I
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bbsyncer
+
+# Resource limits
+TimeoutStartSec=300
+TimeoutStopSec=10
+
+# Do not restart on failure — the pilot will re-plug the FC
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

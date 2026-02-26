@@ -1,0 +1,30 @@
+# systemd unit for bbsyncer web server (always running)
+# Install to: /etc/systemd/system/bbsyncer-web.service
+# Enable: sudo systemctl enable --now bbsyncer-web.service
+
+[Unit]
+Description=Betaflight Blackbox Syncer Web Server
+Documentation=https://github.com/your-username/betaflight-blackbox-field-sync
+After=network.target hostapd.service
+
+[Service]
+Type=simple
+User=bbsyncer
+Group=bbsyncer
+
+WorkingDirectory=/opt/bbsyncer
+ExecStart=/opt/bbsyncer/venv/bin/python -m bbsyncer --web
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bbsyncer-web
+
+Restart=always
+RestartSec=5
+
+# Allow binding to port 80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

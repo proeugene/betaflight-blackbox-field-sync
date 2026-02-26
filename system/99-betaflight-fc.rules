@@ -1,0 +1,12 @@
+# udev rule: trigger bbsyncer sync service when a Betaflight FC (STM32 VID) is plugged in
+# Install to: /etc/udev/rules.d/99-betaflight-fc.rules
+# Reload: sudo udevadm control --reload-rules && sudo udevadm trigger
+
+# STMicroelectronics VID 0x0483, NOT in DFU mode (product 0xdf11)
+# Matches CDC-ACM serial ports (ttyACM*)
+SUBSYSTEM=="tty", \
+  ATTRS{idVendor}=="0483", \
+  ATTRS{idProduct}!="df11", \
+  KERNEL=="ttyACM*", \
+  TAG+="systemd", \
+  ENV{SYSTEMD_WANTS}="bbsyncer@%k.service"
