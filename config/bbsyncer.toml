@@ -12,7 +12,7 @@ min_free_space_mb = 200
 
 # Sync behaviour
 erase_after_sync = true    # set to false for dry-run / testing
-flash_chunk_size = 4096
+flash_chunk_size = 8192
 erase_timeout_sec = 120
 flash_read_compression = false  # false = more reliable; true = faster
 
