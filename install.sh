@@ -54,7 +54,7 @@ fi
 echo "[1/8] Installing system packages..."
 apt-get update -q
 apt-get install -y \
-  python3 python3-pip python3-venv python3-flask \
+  python3 python3-pip python3-venv \
   hostapd dnsmasq avahi-daemon \
   rfkill
 

@@ -98,9 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         orchestrator = SyncOrchestrator(cfg, led, dry_run=args.dry_run)
         result = orchestrator.run(port)
     finally:
-        # Give LED a moment to complete its final pattern before stopping
-        import time
-        time.sleep(6)
+        led.wait_until_idle(timeout=8.0)
         led.stop()
 
     exit_codes = {

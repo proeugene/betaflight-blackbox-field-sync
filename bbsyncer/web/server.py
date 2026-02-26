@@ -18,6 +18,7 @@ import json
 import logging
 import shutil
 import socketserver
+import time as _time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -26,6 +27,19 @@ from bbsyncer.sync.orchestrator import get_status
 from bbsyncer.util.disk_space import used_and_free_gb
 
 log = logging.getLogger(__name__)
+
+_sessions_cache: tuple[float, list] = (0.0, [])
+_SESSIONS_TTL = 10.0  # seconds
+
+
+def _get_sessions(storage: Path) -> list:
+    global _sessions_cache
+    ts, data = _sessions_cache
+    if _time.monotonic() - ts > _SESSIONS_TTL:
+        data = list_sessions(storage) if storage.exists() else []
+        _sessions_cache = (_time.monotonic(), data)
+    return data
+
 
 _CAPTIVE_PATHS = frozenset({
     "/generate_204",
@@ -129,7 +143,7 @@ def _render_sessions(sessions: list) -> str:
 
 
 def _render_index(storage: Path) -> str:
-    sessions = list_sessions(storage) if storage.exists() else []
+    sessions = _get_sessions(storage)
     try:
         used_gb, free_gb = used_and_free_gb(storage)
     except OSError:
@@ -410,8 +424,7 @@ def _make_handler(storage_path: str) -> type:
                 elif path == "/":
                     self._send_html(_render_index(storage))
                 elif path == "/sessions":
-                    sessions = list_sessions(storage) if storage.exists() else []
-                    self._send_json(sessions)
+                    self._send_json(_get_sessions(storage))
                 elif path == "/status":
                     self._send_json(get_status())
                 elif path.startswith("/download/"):
@@ -455,6 +468,8 @@ def _make_handler(storage_path: str) -> type:
             if not session_path.exists():
                 raise _HTTPError(404)
             shutil.rmtree(session_path)
+            global _sessions_cache
+            _sessions_cache = (0.0, [])  # invalidate
             log.info("Deleted session: %s", session_path)
             self._send_json({"deleted": True, "session_id": session_id})
 
@@ -485,7 +500,7 @@ def _make_handler(storage_path: str) -> type:
             self.end_headers()
             with open(path, "rb") as f:
                 while True:
-                    chunk = f.read(65536)
+                    chunk = f.read(1 << 20)  # 1 MB
                     if not chunk:
                         break
                     self.wfile.write(chunk)

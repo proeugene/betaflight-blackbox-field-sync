@@ -68,6 +68,7 @@ class LEDController:
         self._state = LEDState.OFF
         self._lock = threading.Lock()
         self._event = threading.Event()
+        self._idle_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._running = False
 
@@ -105,6 +106,10 @@ class LEDController:
         if self._backend == "sysfs":
             self._sysfs_restore_trigger()
 
+    def wait_until_idle(self, timeout: float = 10.0) -> None:
+        """Block until the current LED pattern completes (or timeout)."""
+        self._idle_event.wait(timeout=timeout)
+
     def set_state(self, state: LEDState) -> None:
         with self._lock:
             if self._state != state:
@@ -117,6 +122,7 @@ class LEDController:
             with self._lock:
                 state = self._state
             self._event.clear()
+            self._idle_event.clear()
             self._execute_pattern(state)
 
     def _execute_pattern(self, state: LEDState) -> None:
@@ -124,6 +130,7 @@ class LEDController:
 
         if not steps:
             self._set_raw(False)
+            self._idle_event.set()
             self._event.wait()  # wait for state change
             return
 
@@ -139,6 +146,7 @@ class LEDController:
                     return
             if not repeat:
                 self._set_raw(False)
+                self._idle_event.set()
                 self._event.wait()  # wait for next state change
                 return
 

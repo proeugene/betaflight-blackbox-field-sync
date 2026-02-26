@@ -126,7 +126,8 @@ def huffman_decode(
     Returns:
         Decompressed bytes.
     """
-    in_buf = memoryview(bytes(in_buf)) if not isinstance(in_buf, memoryview) else in_buf
+    if not isinstance(in_buf, memoryview):
+        in_buf = memoryview(in_buf if isinstance(in_buf, (bytes, bytearray)) else bytes(in_buf))
     out: bytearray = bytearray()
     code = 0
     code_len = 0
