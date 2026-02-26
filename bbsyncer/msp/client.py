@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import struct
+import time
 from typing import Optional
 
 import serial
@@ -58,6 +59,7 @@ class MSPClient:
         self._timeout = timeout
         self._ser: Optional[serial.Serial] = None
         self._decoder = FrameDecoder()
+        self._pending: dict[int, MSPFrame] = {}
 
     def open(self) -> None:
         self._ser = serial.Serial(
@@ -93,24 +95,27 @@ class MSPClient:
 
     def receive(self, code: int) -> MSPFrame:
         """Block until a response frame for *code* is received or timeout."""
-        import time
         deadline = time.monotonic() + self._timeout
         while time.monotonic() < deadline:
             chunk = self._ser.read(_READ_CHUNK)
             if chunk:
                 self._decoder.feed(chunk)
-            # Check for matching response
-            for i, frame in enumerate(self._decoder.frames):
-                if frame.code == code and frame.direction == ord('>'):
-                    self._decoder.frames.pop(i)
-                    log.debug("RX code=%d payload_len=%d", code, len(frame.payload))
-                    return frame
+            # Drain newly decoded frames into pending dict (O(1) pop by code)
+            if self._decoder.frames:
+                frames, self._decoder.frames = self._decoder.frames, []
+                for f in frames:
+                    self._pending[f.code] = f
+            frame = self._pending.pop(code, None)
+            if frame is not None and frame.direction == ord('>'):
+                log.debug("RX code=%d payload_len=%d", code, len(frame.payload))
+                return frame
         raise MSPTimeoutError(f"Timeout waiting for MSP response code={code}")
 
     def request(self, code: int, payload: bytes = b'') -> MSPFrame:
         """Send request and wait for matching response."""
         # Flush any stale frames for this code
         self._decoder.frames = [f for f in self._decoder.frames if f.code != code]
+        self._pending.pop(code, None)
         self.send(code, payload)
         return self.receive(code)
 
