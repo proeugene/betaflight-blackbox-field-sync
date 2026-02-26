@@ -12,7 +12,6 @@ license = { text = "MIT" }
 
 dependencies = [
     "pyserial>=3.5",
-    "flask>=3.0",
     "RPi.GPIO>=0.7.1; platform_machine in 'armv6l armv7l aarch64'",
 ]
 

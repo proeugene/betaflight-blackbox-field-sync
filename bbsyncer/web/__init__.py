@@ -1,4 +1,4 @@
 """Web server package."""
-from .server import create_app, run_server
+from .server import run_server
 
-__all__ = ["create_app", "run_server"]
+__all__ = ["run_server"]
