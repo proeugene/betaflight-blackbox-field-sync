@@ -236,6 +236,31 @@ pytest --cov=bbsyncer --cov-report=term-missing
 
 The test suite runs entirely without hardware — the orchestrator tests use mocked MSP clients.
 
+### Testing the web UI locally
+
+The web server uses only Python stdlib (no Flask or other runtime dependencies), so you can run it directly against a folder of fake session data:
+
+```bash
+# Create a fake session
+mkdir -p /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012
+cat > /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/manifest.json <<'EOF'
+{"version":1,"created_utc":"2026-02-26T14:30:12Z","fc":{"variant":"BTFL","uid":"deadbeef12345678","api_version":"4.3","blackbox_device":3},"file":{"name":"raw_flash.bbl","bytes":10485760,"sha256":"abc123def456abc123def456abc123de"},"erase_attempted":true,"erase_completed":true}
+EOF
+touch /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/raw_flash.bbl
+
+# Start the server on a non-privileged port
+python -c "from bbsyncer.web.server import run_server; run_server(storage_path='/tmp/bbsyncer-test', port=8080)"
+# Open http://localhost:8080
+```
+
+Or with Docker:
+
+```bash
+docker build -t bbsyncer-web .
+docker run --rm -p 8080:8080 -v /tmp/bbsyncer-test:/data bbsyncer-web
+# Open http://localhost:8080
+```
+
 ---
 
 ## How It Works (Technical)
@@ -249,7 +274,7 @@ The sync service runs a 10-step state machine:
 3. **Query flash** — `MSP_DATAFLASH_SUMMARY`: flags, total size, used size
 4. **Check Pi storage** — must have enough free space for the flash + 200 MB headroom
 5. **Prepare output** — create timestamped session directory, open `.bbl` file
-6. **Stream flash** — `MSP_DATAFLASH_READ` in 4 KB chunks, writing to disk and updating a running SHA-256 hash
+6. **Stream flash** — `MSP_DATAFLASH_READ` in 8 KB chunks, writing to disk and updating a running SHA-256 hash
 7. **Verify** — re-read the file from disk, compare SHA-256; abort erase if mismatch
 8. **Write manifest** — saved before erase so there's an audit trail even if erase fails
 9. **Erase** — `MSP_DATAFLASH_ERASE`, then poll `MSP_DATAFLASH_SUMMARY` every 2 s until `used_size == 0`
