@@ -235,10 +235,11 @@ class SyncOrchestrator:
 
                     progress = int(address * 100 / used_size)
                     _set_status("syncing", progress)
-                    log.debug(
-                        "Read 0x%08x / 0x%08x (%d%%)",
-                        address, used_size, progress
-                    )
+                    if address % (cfg.flash_chunk_size * 64) < cfg.flash_chunk_size:
+                        log.debug(
+                            "Read 0x%08x / 0x%08x (%d%%)",
+                            address, used_size, progress
+                        )
 
             except Exception as exc:
                 log.exception("Unexpected error during flash read: %s", exc)
