@@ -74,20 +74,19 @@ class TestSyncOrchestratorSuccess:
                 'ready': True,
             }
 
-            # Flash read: return in two 8-byte chunks
+            # Flash read: return in two 8-byte chunks (pipelined)
             chunk_calls = [
                 (0, flash_data[:8]),
                 (8, flash_data[8:]),
-                (16, b''),  # EOF
             ]
             call_idx = [0]
 
-            def fake_read_chunk(address, size, compression=False):
+            def fake_receive(compression=False):
                 result = chunk_calls[call_idx[0]]
                 call_idx[0] = min(call_idx[0] + 1, len(chunk_calls) - 1)
                 return result
 
-            client_instance.read_flash_chunk.side_effect = fake_read_chunk
+            client_instance.receive_flash_read_response.side_effect = fake_receive
 
             orch = SyncOrchestrator(cfg, led, dry_run=False)
             result = orch.run('/dev/ttyACM0')
@@ -176,14 +175,14 @@ class TestSyncOrchestratorSuccess:
             }
 
             call_idx = [0]
-            chunks = [(0, flash_data[:4]), (4, flash_data[4:]), (8, b'')]
+            chunks = [(0, flash_data[:4]), (4, flash_data[4:])]
 
-            def fake_read(address, size, compression=False):
+            def fake_receive(compression=False):
                 r = chunks[call_idx[0]]
                 call_idx[0] = min(call_idx[0] + 1, len(chunks) - 1)
                 return r
 
-            client_instance.read_flash_chunk.side_effect = fake_read
+            client_instance.receive_flash_read_response.side_effect = fake_receive
 
             orch = SyncOrchestrator(cfg, led, dry_run=True)
             result = orch.run('/dev/ttyACM0')
@@ -230,8 +229,8 @@ class TestSyncOrchestratorErrors:
                 'supported': True,
                 'ready': True,
             }
-            # Always raise MSPError
-            client_instance.read_flash_chunk.side_effect = MSPError('Serial timeout')
+            # Always raise MSPError on receive
+            client_instance.receive_flash_read_response.side_effect = MSPError('Serial timeout')
 
             orch = SyncOrchestrator(cfg, led)
             result = orch.run('/dev/ttyACM0')

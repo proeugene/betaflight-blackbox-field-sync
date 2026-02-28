@@ -70,7 +70,7 @@ class StreamWriter:
         h = hashlib.sha256()
         with open(self.path, 'rb') as f:
             while True:
-                block = f.read(65536)
+                block = f.read(1 << 20)
                 if not block:
                     break
                 h.update(block)

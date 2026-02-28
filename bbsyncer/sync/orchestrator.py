@@ -189,11 +189,16 @@ class SyncOrchestrator:
             consecutive_errors = 0
 
             try:
+                # Send first request (prime the pipeline)
+                first_chunk_size = min(cfg.flash_chunk_size, used_size - address)
+                client.send_flash_read_request(
+                    address, first_chunk_size, compression=cfg.flash_read_compression
+                )
+
                 while address < used_size:
-                    chunk_size = min(cfg.flash_chunk_size, used_size - address)
                     try:
-                        chunk_addr, data = client.read_flash_chunk(
-                            address, chunk_size, compression=cfg.flash_read_compression
+                        chunk_addr, data = client.receive_flash_read_response(
+                            compression=cfg.flash_read_compression
                         )
                     except MSPError as exc:
                         consecutive_errors += 1
@@ -211,6 +216,12 @@ class SyncOrchestrator:
                             _set_status('error')
                             return SyncResult.ERROR
                         time.sleep(0.1)
+                        # Re-send the same request on error
+                        client.send_flash_read_request(
+                            address,
+                            min(cfg.flash_chunk_size, used_size - address),
+                            compression=cfg.flash_read_compression,
+                        )
                         continue
 
                     if chunk_addr != address:
@@ -226,6 +237,12 @@ class SyncOrchestrator:
                             self.led.set_state(LEDState.ERROR_GENERAL)
                             _set_status('error')
                             return SyncResult.ERROR
+                        # Re-send the same request on mismatch
+                        client.send_flash_read_request(
+                            address,
+                            min(cfg.flash_chunk_size, used_size - address),
+                            compression=cfg.flash_read_compression,
+                        )
                         continue
 
                     if not data:
@@ -233,8 +250,19 @@ class SyncOrchestrator:
                         break
 
                     consecutive_errors = 0
+
+                    # Pipeline: send next request BEFORE processing current data
+                    next_address = address + len(data)
+                    if next_address < used_size:
+                        next_chunk_size = min(cfg.flash_chunk_size, used_size - next_address)
+                        client.send_flash_read_request(
+                            next_address,
+                            next_chunk_size,
+                            compression=cfg.flash_read_compression,
+                        )
+
                     writer.write(data)
-                    address += len(data)
+                    address = next_address
 
                     progress = int(address * 100 / used_size)
                     _set_status('syncing', progress)

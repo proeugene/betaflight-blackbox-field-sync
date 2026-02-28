@@ -60,7 +60,7 @@ class MSPClient:
         self._ser = serial.Serial(
             self._port,
             baudrate=self._baud,
-            timeout=0.1,  # non-blocking reads
+            timeout=0.01,  # non-blocking reads
             write_timeout=2.0,
         )
         log.debug('Opened serial port %s at %d baud', self._port, self._baud)
@@ -86,7 +86,6 @@ class MSPClient:
         frame = encode_v1(code, payload)
         log.debug('TX code=%d payload_len=%d', code, len(payload))
         self._ser.write(frame)
-        self._ser.flush()
 
     def receive(self, code: int) -> MSPFrame:
         """Block until a response frame for *code* is received or timeout."""
@@ -162,6 +161,34 @@ class MSPClient:
             'supported': bool(flags & DATAFLASH_FLAG_SUPPORTED),
             'ready': bool(flags & DATAFLASH_FLAG_READY),
         }
+
+    def send_flash_read_request(self, address: int, size: int, compression: bool = False) -> None:
+        """Send a DATAFLASH_READ request without waiting for response."""
+        payload = struct.pack('<IHB', address, size, 1 if compression else 0)
+        # Flush stale frames for this code
+        self._decoder.frames = [f for f in self._decoder.frames if f.code != MSP_DATAFLASH_READ]
+        self._pending.pop(MSP_DATAFLASH_READ, None)
+        self.send(MSP_DATAFLASH_READ, payload)
+
+    def receive_flash_read_response(self, compression: bool = False) -> tuple[int, bytes]:
+        """Receive and decode a DATAFLASH_READ response."""
+        frame = self.receive(MSP_DATAFLASH_READ)
+        p = frame.payload
+        if len(p) < 7:
+            raise MSPError(f'Short DATAFLASH_READ response (len={len(p)})')
+
+        chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', p)
+        raw_data = p[7 : 7 + data_size]
+
+        if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
+            if len(raw_data) < 2:
+                raise MSPError('Compressed chunk too short for char count header')
+            char_count = struct.unpack_from('<H', raw_data)[0]
+            data = huffman_decode(raw_data[2:], char_count)
+        else:
+            data = raw_data
+
+        return chunk_addr, data
 
     def read_flash_chunk(
         self,

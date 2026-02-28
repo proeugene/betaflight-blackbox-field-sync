@@ -108,14 +108,19 @@ for _i, _entry in enumerate(DEFAULT_HUFFMAN_TREE):
     if DEFAULT_HUFFMAN_LEN_INDEX[_entry.code_len] == -1:
         DEFAULT_HUFFMAN_LEN_INDEX[_entry.code_len] = _i
 
+_HUFFMAN_LOOKUP: dict[tuple[int, int], int] = {
+    (e.code_len, e.code): e.value for e in DEFAULT_HUFFMAN_TREE
+}
 
-def huffman_decode(
+
+def _py_huffman_decode(
     in_buf: bytes | bytearray | memoryview,
     char_count: int,
     tree: list[HuffmanEntry] = DEFAULT_HUFFMAN_TREE,
     len_index: list[int] = DEFAULT_HUFFMAN_LEN_INDEX,
+    lookup: dict[tuple[int, int], int] = _HUFFMAN_LOOKUP,
 ) -> bytes:
-    """Decode Huffman-compressed blackbox data.
+    """Decode Huffman-compressed blackbox data (pure Python).
 
     Args:
         in_buf: Compressed input bytes.
@@ -151,16 +156,18 @@ def huffman_decode(
 
         # Check if current code matches a leaf node
         if code_len < len(len_index) and len_index[code_len] != -1:
-            i = len_index[code_len]
-            while i < len(tree) and tree[i].code_len == code_len:
-                if tree[i].code == code:
-                    value = tree[i].value
-                    if value == HUFFMAN_EOF:
-                        return bytes(out)
-                    out.append(value)
-                    code = 0
-                    code_len = 0
-                    break
-                i += 1
+            value = lookup.get((code_len, code))
+            if value is not None:
+                if value == HUFFMAN_EOF:
+                    return bytes(out)
+                out.append(value)
+                code = 0
+                code_len = 0
 
     return bytes(out)
+
+
+try:
+    from bbsyncer._native._msp_fast import huffman_decode
+except ImportError:
+    huffman_decode = _py_huffman_decode

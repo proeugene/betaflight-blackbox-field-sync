@@ -27,6 +27,11 @@ dev = [
 [project.scripts]
 bbsyncer = "bbsyncer.__main__:main"
 
+[tool.setuptools]
+ext-modules = [
+    { name = "bbsyncer._native._msp_fast", sources = ["bbsyncer/_native/_msp_fast.c"] },
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["bbsyncer*"]

@@ -14,9 +14,12 @@ Routes:
 
 from __future__ import annotations
 
+import email.utils
+import gzip
 import html
 import json
 import logging
+import os
 import shutil
 import socketserver
 import time as _time
@@ -475,22 +478,53 @@ def _make_handler(storage_path: str) -> type:
 
         def _send_html(self, body: str, status: int = 200) -> None:
             data = body.encode()
-            self.send_response(status)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self.send_header('Content-Length', str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            accept_enc = self.headers.get('Accept-Encoding', '')
+            if 'gzip' in accept_enc:
+                data = gzip.compress(data)
+                self.send_response(status)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Encoding', 'gzip')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                self.send_response(status)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
 
         def _send_json(self, data: object, status: int = 200) -> None:
             body = json.dumps(data).encode()
-            self.send_response(status)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            accept_enc = self.headers.get('Accept-Encoding', '')
+            if 'gzip' in accept_enc:
+                body = gzip.compress(body)
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Encoding', 'gzip')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
 
         def _send_file(self, path: Path, filename: str) -> None:
             size = path.stat().st_size
+            mtime = path.stat().st_mtime
+            last_modified = email.utils.formatdate(mtime, usegmt=True)
+            etag = f'"{int(mtime)}-{size}"'
+
+            # Check If-None-Match
+            if_none_match = self.headers.get('If-None-Match')
+            if if_none_match and if_none_match == etag:
+                self.send_response(304)
+                self.end_headers()
+                return
+
             range_header = self.headers.get('Range')
             if range_header and range_header.startswith('bytes='):
                 try:
@@ -511,16 +545,33 @@ def _make_handler(storage_path: str) -> type:
                     self.send_header('Content-Length', str(content_length))
                     self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
                     self.send_header('Accept-Ranges', 'bytes')
+                    self.send_header('Last-Modified', last_modified)
+                    self.send_header('ETag', etag)
                     self.end_headers()
                     with open(path, 'rb') as f:
-                        f.seek(start)
-                        remaining = content_length
-                        while remaining > 0:
-                            chunk = f.read(min(1 << 20, remaining))
-                            if not chunk:
-                                break
-                            self.wfile.write(chunk)
-                            remaining -= len(chunk)
+                        if hasattr(os, 'sendfile'):
+                            offset = start
+                            remaining = content_length
+                            while remaining > 0:
+                                sent = os.sendfile(
+                                    self.wfile.fileno(),
+                                    f.fileno(),
+                                    offset,
+                                    min(1 << 20, remaining),
+                                )
+                                if sent == 0:
+                                    break
+                                offset += sent
+                                remaining -= sent
+                        else:
+                            f.seek(start)
+                            remaining = content_length
+                            while remaining > 0:
+                                chunk = f.read(min(1 << 20, remaining))
+                                if not chunk:
+                                    break
+                                self.wfile.write(chunk)
+                                remaining -= len(chunk)
                     return
                 except (ValueError, IndexError):
                     pass  # Fall through to full response
@@ -530,13 +581,28 @@ def _make_handler(storage_path: str) -> type:
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
             self.send_header('Content-Length', str(size))
             self.send_header('Accept-Ranges', 'bytes')
+            self.send_header('Last-Modified', last_modified)
+            self.send_header('ETag', etag)
             self.end_headers()
             with open(path, 'rb') as f:
-                while True:
-                    chunk = f.read(1 << 20)  # 1 MB
-                    if not chunk:
-                        break
-                    self.wfile.write(chunk)
+                if hasattr(os, 'sendfile'):
+                    offset = 0
+                    while offset < size:
+                        sent = os.sendfile(
+                            self.wfile.fileno(),
+                            f.fileno(),
+                            offset,
+                            min(1 << 20, size - offset),
+                        )
+                        if sent == 0:
+                            break
+                        offset += sent
+                else:
+                    while True:
+                        chunk = f.read(1 << 20)
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
 
         def _send_error_response(self, code: int) -> None:
             self.send_response(code)
