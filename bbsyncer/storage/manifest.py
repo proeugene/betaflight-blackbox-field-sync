@@ -16,6 +16,16 @@ MANIFEST_FILENAME = 'manifest.json'
 RAW_FLASH_FILENAME = 'raw_flash.bbl'
 
 
+def _atomic_json_write(path: Path, data: dict) -> None:
+    """Write *data* as JSON to *path* with fsync for durability."""
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+    try:
+        os.write(fd, json.dumps(data, indent=2).encode())
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def make_session_dir(storage_root: Path, fc_info: FCInfo) -> Path:
     """Create and return a new timestamped session directory.
 
@@ -60,12 +70,7 @@ def write_manifest(
         'erase_completed': erase_completed,
     }
     path = session_dir / MANIFEST_FILENAME
-    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
-    try:
-        os.write(fd, json.dumps(manifest, indent=2).encode())
-        os.fsync(fd)
-    finally:
-        os.close(fd)
+    _atomic_json_write(path, manifest)
     log.debug('Wrote manifest to %s', path)
     return path
 
@@ -77,12 +82,7 @@ def update_manifest_erase(session_dir: Path, erase_completed: bool) -> None:
         data = json.loads(path.read_text())
         data['erase_completed'] = erase_completed
         data['erase_attempted'] = True
-        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
-        try:
-            os.write(fd, json.dumps(data, indent=2).encode())
-            os.fsync(fd)
-        finally:
-            os.close(fd)
+        _atomic_json_write(path, data)
         log.debug('Updated manifest erase_completed=%s', erase_completed)
     except (OSError, json.JSONDecodeError) as exc:
         log.error('Failed to update manifest: %s', exc)

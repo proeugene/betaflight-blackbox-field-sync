@@ -1,5 +1,7 @@
 # Betaflight Blackbox Field Syncer
 
+[![CI](https://github.com/proeugene/betaflight-blackbox-field-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/proeugene/betaflight-blackbox-field-sync/actions/workflows/ci.yml)
+
 A pocket-sized device based on a **Raspberry Pi Zero W** that automatically downloads and clears your Betaflight FC's blackbox flash — while you're standing at the field, no laptop required.
 
 Plug your FC into the Pi, wait for the LED, re-plug the FC into your quad, and fly again. Your logs are saved on the Pi's SD card and available over Wi-Fi from any phone.
@@ -225,13 +227,23 @@ python -m bbsyncer --port /dev/ttyACM0 --verbose
 git clone https://github.com/proeugene/betaflight-blackbox-field-sync
 cd betaflight-blackbox-field-sync
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev]"   # also builds the optional C extension
 
 # Run tests:
 pytest
 
 # Run with coverage:
 pytest --cov=bbsyncer --cov-report=term-missing
+
+# Linting:
+ruff check
+ruff format --check
+
+# Security scanning:
+bandit -r bbsyncer/ -c pyproject.toml
+
+# Full CI check locally:
+ruff check && ruff format --check && pytest --cov=bbsyncer
 ```
 
 The test suite runs entirely without hardware — the orchestrator tests use mocked MSP clients.
@@ -274,7 +286,7 @@ The sync service runs a 10-step state machine:
 3. **Query flash** — `MSP_DATAFLASH_SUMMARY`: flags, total size, used size
 4. **Check Pi storage** — must have enough free space for the flash + 200 MB headroom
 5. **Prepare output** — create timestamped session directory, open `.bbl` file
-6. **Stream flash** — `MSP_DATAFLASH_READ` in 8 KB chunks, writing to disk and updating a running SHA-256 hash
+6. **Stream flash** — `MSP_DATAFLASH_READ` in 16 KB chunks, writing to disk and updating a running SHA-256 hash. Requests are pipelined — the next chunk is requested before the current one is processed, hiding FC-side flash read latency.
 7. **Verify** — re-read the file from disk, compare SHA-256; abort erase if mismatch
 8. **Write manifest** — saved before erase so there's an audit trail even if erase fails
 9. **Erase** — `MSP_DATAFLASH_ERASE`, then poll `MSP_DATAFLASH_SUMMARY` every 2 s until `used_size == 0`
@@ -282,7 +294,23 @@ The sync service runs a 10-step state machine:
 
 The FC's flash is **never erased unless the SHA-256 verification passes**.
 
-MSP framing, CRC8-DVB-S2, and the Huffman decompressor are ported directly from the [Betaflight Configurator](https://github.com/betaflight/betaflight-configurator) JavaScript source.
+MSP framing, CRC8-DVB-S2, and the Huffman decompressor are ported directly from the [Betaflight Configurator](https://github.com/betaflight/betaflight-configurator) JavaScript source. Performance-critical CRC, frame decoding, and Huffman decompression are accelerated by an optional C extension (`bbsyncer/_native/_msp_fast.c`), with transparent fallback to pure Python.
+
+---
+
+## Architecture
+
+```
+bbsyncer/
+├── msp/         MSP protocol: framing, CRC, Huffman, client
+├── fc/          Flight controller detection and handshake
+├── sync/        10-step sync orchestrator (main workflow)
+├── storage/     Session directories, manifest.json, file writer
+├── web/         stdlib HTTP server, captive portal, file downloads
+├── led/         LED state machine (sysfs + GPIO backends)
+├── util/        Disk space utilities
+└── _native/     Optional C extension for CRC/framing/Huffman
+```
 
 ---
 
@@ -295,6 +323,21 @@ MSP framing, CRC8-DVB-S2, and the Huffman decompressor are ported directly from 
 | **Hardware** | Raspberry Pi Zero W, Zero 2 W |
 | **OS** | Raspberry Pi OS Lite, bookworm (64-bit) |
 | **Python** | 3.11+ |
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. **Fork** the repo and create a feature branch (`git checkout -b my-feature`)
+2. Make your changes and add tests for new features
+3. Run `ruff check && ruff format --check && pytest` before submitting
+4. Open a **Pull Request** against `main`
+
+CI runs automatically on PRs — it checks linting, runs the test matrix across Python 3.11–3.13, and performs security scanning with Bandit.
+
+**Code style:** We use [ruff](https://docs.astral.sh/ruff/) with single quotes and a 100-character line length (configured in `pyproject.toml`).
 
 ---
 

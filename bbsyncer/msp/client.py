@@ -170,15 +170,13 @@ class MSPClient:
         self._pending.pop(MSP_DATAFLASH_READ, None)
         self.send(MSP_DATAFLASH_READ, payload)
 
-    def receive_flash_read_response(self, compression: bool = False) -> tuple[int, bytes]:
-        """Receive and decode a DATAFLASH_READ response."""
-        frame = self.receive(MSP_DATAFLASH_READ)
-        p = frame.payload
-        if len(p) < 7:
-            raise MSPError(f'Short DATAFLASH_READ response (len={len(p)})')
+    def _parse_flash_read_payload(self, payload: bytes) -> tuple[int, bytes]:
+        """Parse a DATAFLASH_READ response payload into (address, data)."""
+        if len(payload) < 7:
+            raise MSPError(f'Short DATAFLASH_READ response (len={len(payload)})')
 
-        chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', p)
-        raw_data = p[7 : 7 + data_size]
+        chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', payload)
+        raw_data = payload[7 : 7 + data_size]
 
         if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
             if len(raw_data) < 2:
@@ -189,6 +187,11 @@ class MSPClient:
             data = raw_data
 
         return chunk_addr, data
+
+    def receive_flash_read_response(self, compression: bool = False) -> tuple[int, bytes]:
+        """Receive and decode a DATAFLASH_READ response."""
+        frame = self.receive(MSP_DATAFLASH_READ)
+        return self._parse_flash_read_payload(frame.payload)
 
     def read_flash_chunk(
         self,
@@ -203,22 +206,7 @@ class MSPClient:
         """
         payload = struct.pack('<IHB', address, size, 1 if compression else 0)
         frame = self.request(MSP_DATAFLASH_READ, payload)
-        p = frame.payload
-        if len(p) < 7:
-            raise MSPError(f'Short DATAFLASH_READ response (len={len(p)})')
-
-        chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', p)
-        raw_data = p[7 : 7 + data_size]
-
-        if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
-            if len(raw_data) < 2:
-                raise MSPError('Compressed chunk too short for char count header')
-            char_count = struct.unpack_from('<H', raw_data)[0]
-            data = huffman_decode(raw_data[2:], char_count)
-        else:
-            data = raw_data
-
-        return chunk_addr, data
+        return self._parse_flash_read_payload(frame.payload)
 
     def erase_flash(self) -> None:
         """Send MSP_DATAFLASH_ERASE (fire-and-forget; FC erases asynchronously)."""

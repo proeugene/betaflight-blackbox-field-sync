@@ -100,17 +100,7 @@ class SyncOrchestrator:
         with MSPClient(port, cfg.serial_baud, cfg.serial_timeout) as client:
             try:
                 fc_info = detect_fc(client)
-            except FCSDCardBlackbox as exc:
-                log.error('%s', exc)
-                self.led.set_state(LEDState.ERROR_GENERAL)
-                _set_status('error')
-                return SyncResult.ERROR
-            except FCNotBetaflight as exc:
-                log.error('%s', exc)
-                self.led.set_state(LEDState.ERROR_GENERAL)
-                _set_status('error')
-                return SyncResult.ERROR
-            except FCDetectionError as exc:
+            except (FCSDCardBlackbox, FCNotBetaflight, FCDetectionError) as exc:
                 log.error('FC detection failed: %s', exc)
                 self.led.set_state(LEDState.ERROR_GENERAL)
                 _set_status('error')
