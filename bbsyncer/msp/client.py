@@ -36,7 +36,7 @@ from .huffman import huffman_decode
 log = logging.getLogger(__name__)
 
 _RESPONSE_TIMEOUT = 5.0   # seconds
-_READ_CHUNK = 256          # bytes to read from serial at a time
+_READ_CHUNK = 4096         # bytes to read from serial at a time
 
 
 class MSPError(Exception):

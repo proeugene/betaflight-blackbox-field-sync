@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -59,7 +60,12 @@ def write_manifest(
         "erase_completed": erase_completed,
     }
     path = session_dir / MANIFEST_FILENAME
-    path.write_text(json.dumps(manifest, indent=2))
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+    try:
+        os.write(fd, json.dumps(manifest, indent=2).encode())
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     log.debug("Wrote manifest to %s", path)
     return path
 
@@ -71,7 +77,12 @@ def update_manifest_erase(session_dir: Path, erase_completed: bool) -> None:
         data = json.loads(path.read_text())
         data["erase_completed"] = erase_completed
         data["erase_attempted"] = True
-        path.write_text(json.dumps(data, indent=2))
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC)
+        try:
+            os.write(fd, json.dumps(data, indent=2).encode())
+            os.fsync(fd)
+        finally:
+            os.close(fd)
         log.debug("Updated manifest erase_completed=%s", erase_completed)
     except (OSError, json.JSONDecodeError) as exc:
         log.error("Failed to update manifest: %s", exc)

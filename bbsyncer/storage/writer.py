@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -29,7 +30,7 @@ class StreamWriter:
 
     def open(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._file = open(self.path, 'wb')
+        self._file = open(self.path, 'wb', buffering=256 * 1024)
         log.debug("Opened output file %s", self.path)
 
     def write(self, data: bytes) -> None:
@@ -42,6 +43,7 @@ class StreamWriter:
     def close(self) -> None:
         if self._file:
             self._file.flush()
+            os.fsync(self._file.fileno())
             self._file.close()
             self._file = None
             log.debug("Closed output file %s (%d bytes)", self.path, self._bytes_written)

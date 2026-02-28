@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import glob as glob_module
 import logging
+import threading
 import time
 from enum import Enum, auto
 from pathlib import Path
@@ -53,17 +54,20 @@ class SyncResult(Enum):
     DRY_RUN = auto()
 
 
-# Shared sync status — read by web server
+# Shared sync status — read by web server (thread-safe)
+_status_lock = threading.Lock()
 _current_status: dict = {"state": "idle", "progress": 0}
 
 
 def get_status() -> dict:
-    return dict(_current_status)
+    with _status_lock:
+        return dict(_current_status)
 
 
 def _set_status(state: str, progress: int = 0) -> None:
-    _current_status["state"] = state
-    _current_status["progress"] = progress
+    with _status_lock:
+        _current_status["state"] = state
+        _current_status["progress"] = progress
 
 
 class SyncOrchestrator:

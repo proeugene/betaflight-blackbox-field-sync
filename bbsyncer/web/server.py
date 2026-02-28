@@ -491,12 +491,49 @@ def _make_handler(storage_path: str) -> type:
 
         def _send_file(self, path: Path, filename: str) -> None:
             size = path.stat().st_size
+            range_header = self.headers.get("Range")
+            if range_header and range_header.startswith("bytes="):
+                try:
+                    range_spec = range_header[6:]
+                    start_str, end_str = range_spec.split("-", 1)
+                    start = int(start_str) if start_str else 0
+                    end = int(end_str) if end_str else size - 1
+                    end = min(end, size - 1)
+                    if start > end or start >= size:
+                        self.send_response(416)
+                        self.send_header("Content-Range", f"bytes */{size}")
+                        self.end_headers()
+                        return
+                    content_length = end - start + 1
+                    self.send_response(206)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header(
+                        "Content-Disposition", f'attachment; filename="{filename}"'
+                    )
+                    self.send_header("Content-Length", str(content_length))
+                    self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+                    self.send_header("Accept-Ranges", "bytes")
+                    self.end_headers()
+                    with open(path, "rb") as f:
+                        f.seek(start)
+                        remaining = content_length
+                        while remaining > 0:
+                            chunk = f.read(min(1 << 20, remaining))
+                            if not chunk:
+                                break
+                            self.wfile.write(chunk)
+                            remaining -= len(chunk)
+                    return
+                except (ValueError, IndexError):
+                    pass  # Fall through to full response
+
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
             self.send_header(
                 "Content-Disposition", f'attachment; filename="{filename}"'
             )
             self.send_header("Content-Length", str(size))
+            self.send_header("Accept-Ranges", "bytes")
             self.end_headers()
             with open(path, "rb") as f:
                 while True:

@@ -29,7 +29,7 @@ class Config:
 
     # Sync behaviour
     erase_after_sync: bool = True
-    flash_chunk_size: int = 8192
+    flash_chunk_size: int = 16384
     erase_timeout_sec: int = 120
     flash_read_compression: bool = False   # disable compression for reliability
 

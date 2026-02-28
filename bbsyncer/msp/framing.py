@@ -82,6 +82,7 @@ class FrameDecoder:
         self._size = 0
         self._payload = bytearray()
         self._checksum = 0       # running XOR for v1 or running CRC for v2
+        self._v2_header = bytearray()  # accumulate V2 header bytes for batch CRC
 
     def feed(self, data: bytes) -> None:
         for byte in data:
@@ -143,24 +144,23 @@ class FrameDecoder:
 
         # --- V2 ---
         elif s == _State.V2_FLAG:
-            # flag byte; include in CRC
-            self._checksum = crc8_dvb_s2(bytes([b]))
+            self._v2_header = bytearray([b])
             self._state = _State.V2_CODE_LO
         elif s == _State.V2_CODE_LO:
             self._code = b
-            self._checksum = crc8_dvb_s2(bytes([b]), self._checksum)
+            self._v2_header.append(b)
             self._state = _State.V2_CODE_HI
         elif s == _State.V2_CODE_HI:
             self._code |= b << 8
-            self._checksum = crc8_dvb_s2(bytes([b]), self._checksum)
+            self._v2_header.append(b)
             self._state = _State.V2_LEN_LO
         elif s == _State.V2_LEN_LO:
             self._size = b
-            self._checksum = crc8_dvb_s2(bytes([b]), self._checksum)
+            self._v2_header.append(b)
             self._state = _State.V2_LEN_HI
         elif s == _State.V2_LEN_HI:
             self._size |= b << 8
-            self._checksum = crc8_dvb_s2(bytes([b]), self._checksum)
+            self._v2_header.append(b)
             self._payload = bytearray()
             if self._size == 0:
                 self._state = _State.V2_CHECKSUM
@@ -168,11 +168,12 @@ class FrameDecoder:
                 self._state = _State.V2_PAYLOAD
         elif s == _State.V2_PAYLOAD:
             self._payload.append(b)
-            self._checksum = crc8_dvb_s2(bytes([b]), self._checksum)
             if len(self._payload) == self._size:
                 self._state = _State.V2_CHECKSUM
         elif s == _State.V2_CHECKSUM:
-            if b == self._checksum:
+            # Compute CRC over header + payload in one batch call
+            expected = crc8_dvb_s2(bytes(self._v2_header) + bytes(self._payload))
+            if b == expected:
                 self.frames.append(MSPFrame(
                     version=2,
                     direction=self._direction,
