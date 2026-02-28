@@ -19,6 +19,9 @@ dependencies = [
 dev = [
     "pytest>=7",
     "pytest-cov",
+    "ruff>=0.4",
+    "bandit>=1.7",
+    "pip-audit>=2.7",
 ]
 
 [project.scripts]
@@ -31,3 +34,37 @@ include = ["bbsyncer*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "S",    # flake8-bandit (security)
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "S101",   # assert usage (allowed in tests via per-file-ignores)
+    "S104",   # binding to all interfaces (intentional for Wi-Fi hotspot server)
+    "S603",   # subprocess call with shell=false (not relevant)
+    "S607",   # starting a process with a partial path
+    "S608",   # false positive on f-string HTML construction (not SQL)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106", "S108"]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101", "B104", "B608"]

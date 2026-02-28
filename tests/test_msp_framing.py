@@ -1,7 +1,7 @@
 """Tests for MSP frame encoder and decoder."""
-import pytest
-from bbsyncer.msp.framing import FrameDecoder, MSPFrame, encode_v1, encode_v2
-from bbsyncer.msp.crc import crc8_xor, crc8_dvb_s2
+
+from bbsyncer.msp.crc import crc8_dvb_s2, crc8_xor
+from bbsyncer.msp.framing import FrameDecoder, encode_v1, encode_v2
 
 
 class TestEncodeV1:
@@ -26,7 +26,9 @@ class TestEncodeV1:
     def test_total_length(self):
         payload = b'\x01\x02\x03'
         frame = encode_v1(5, payload)
-        assert len(frame) == 3 + 1 + 1 + len(payload) + 1  # preamble + len + code + payload + checksum
+        assert (
+            len(frame) == 3 + 1 + 1 + len(payload) + 1
+        )  # preamble + len + code + payload + checksum
 
 
 class TestEncodeV2:
@@ -77,9 +79,27 @@ class TestFrameDecoder:
     def test_roundtrip_v1(self):
         """Encode a request, decode as if FC echo'd it back as a response."""
         # Encode a request, then manually flip direction for decode test
-        request = encode_v1(70, b'')
+        _request = encode_v1(70, b'')  # noqa: F841 — verifies encode doesn't crash
         # Manually build a matching response (simulate FC reply)
-        payload = bytes([0x03, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00])
+        payload = bytes(
+            [
+                0x03,
+                0x00,
+                0x00,
+                0x01,
+                0x00,
+                0x00,
+                0x00,
+                0x02,
+                0x00,
+                0x00,
+                0x00,
+                0x01,
+                0x00,
+                0x00,
+                0x00,
+            ]
+        )
         response = self._make_response_v1(70, payload)
         dec = FrameDecoder()
         dec.feed(response)
@@ -105,7 +125,7 @@ class TestFrameDecoder:
     def test_noise_before_frame(self):
         dec = FrameDecoder()
         noise = bytes([0x00, 0xFF, 0x12, 0x34])
-        frame = self._make_response_v1(5, b'\xAB')
+        frame = self._make_response_v1(5, b'\xab')
         dec.feed(noise + frame)
         assert len(dec.frames) == 1
         assert dec.frames[0].code == 5
@@ -120,7 +140,9 @@ class TestFrameDecoder:
     def _make_response_v2(self, code: int, payload: bytes) -> bytes:
         """Build a v2 FROM-FC response frame."""
         size = len(payload)
-        header_for_crc = bytes([0, code & 0xFF, (code >> 8) & 0xFF, size & 0xFF, (size >> 8) & 0xFF])
+        header_for_crc = bytes(
+            [0, code & 0xFF, (code >> 8) & 0xFF, size & 0xFF, (size >> 8) & 0xFF]
+        )
         crc = crc8_dvb_s2(header_for_crc + payload)
         return b'$X>' + header_for_crc + payload + bytes([crc])
 

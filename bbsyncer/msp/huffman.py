@@ -7,17 +7,17 @@ Ported from:
 The tree is sorted by code length, then by code value.
 huffmanLenIndex[n] = index of first entry with codeLen == n, or -1.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 HUFFMAN_EOF = -1
 
 
 @dataclass(frozen=True)
 class HuffmanEntry:
-    value: int   # decoded byte value, or HUFFMAN_EOF (-1)
+    value: int  # decoded byte value, or HUFFMAN_EOF (-1)
     code_len: int
     code: int
 

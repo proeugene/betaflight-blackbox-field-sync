@@ -18,10 +18,7 @@ def _build_crc8_dvb_s2_table() -> bytes:
     for i in range(256):
         crc = i
         for _ in range(8):
-            if crc & 0x80:
-                crc = ((crc << 1) ^ 0xD5) & 0xFF
-            else:
-                crc = (crc << 1) & 0xFF
+            crc = ((crc << 1) ^ 0xD5) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF
         table[i] = crc
     return bytes(table)
 

@@ -1,4 +1,5 @@
 """Disk space utilities."""
+
 from __future__ import annotations
 
 import os
@@ -21,4 +22,4 @@ def used_and_free_gb(path: str | Path) -> tuple[float, float]:
     total = st.f_blocks * st.f_frsize
     free = st.f_bavail * st.f_frsize
     used = total - free
-    return used / (1024 ** 3), free / (1024 ** 3)
+    return used / (1024**3), free / (1024**3)

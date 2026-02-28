@@ -1,11 +1,11 @@
 """Streaming file writer with running SHA-256 checksum."""
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class StreamWriter:
 
     def open(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._file = open(self.path, 'wb', buffering=256 * 1024)
-        log.debug("Opened output file %s", self.path)
+        self._file = open(self.path, 'wb', buffering=256 * 1024)  # noqa: SIM115
+        log.debug('Opened output file %s', self.path)
 
     def write(self, data: bytes) -> None:
         if not data:
@@ -46,14 +46,14 @@ class StreamWriter:
             os.fsync(self._file.fileno())
             self._file.close()
             self._file = None
-            log.debug("Closed output file %s (%d bytes)", self.path, self._bytes_written)
+            log.debug('Closed output file %s (%d bytes)', self.path, self._bytes_written)
 
     def abort(self) -> None:
         """Close and delete the partial file."""
         self.close()
         if self.path.exists():
             self.path.unlink()
-            log.warning("Deleted partial file %s", self.path)
+            log.warning('Deleted partial file %s', self.path)
 
     @property
     def bytes_written(self) -> int:
@@ -79,7 +79,7 @@ class StreamWriter:
         match = file_sha256 == streaming_sha256
         if not match:
             log.error(
-                "SHA-256 mismatch! streaming=%s file=%s",
+                'SHA-256 mismatch! streaming=%s file=%s',
                 streaming_sha256,
                 file_sha256,
             )

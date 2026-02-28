@@ -1,6 +1,6 @@
 """Tests for Huffman decoder."""
-import pytest
-from bbsyncer.msp.huffman import huffman_decode, HUFFMAN_EOF, DEFAULT_HUFFMAN_TREE
+
+from bbsyncer.msp.huffman import DEFAULT_HUFFMAN_TREE, HUFFMAN_EOF, huffman_decode
 
 
 class TestHuffmanDecode:
@@ -9,7 +9,7 @@ class TestHuffmanDecode:
         assert result == b''
 
     def test_decode_zero_char_count(self):
-        result = huffman_decode(b'\xFF\xFF\xFF', 0)
+        result = huffman_decode(b'\xff\xff\xff', 0)
         assert result == b''
 
     def test_single_byte_decode(self):

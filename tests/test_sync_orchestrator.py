@@ -1,11 +1,11 @@
 """Tests for sync orchestrator logic — using mocks to avoid real hardware."""
+
 from __future__ import annotations
 
 import json
-import struct
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,7 +20,7 @@ def make_config(storage_path: str, erase_after_sync: bool = True) -> Config:
     cfg = Config()
     cfg.storage_path = storage_path
     cfg.erase_after_sync = erase_after_sync
-    cfg.min_free_space_mb = 0   # disable free space check in tests
+    cfg.min_free_space_mb = 0  # disable free space check in tests
     cfg.flash_chunk_size = 8
     cfg.serial_timeout = 1.0
     return cfg
@@ -66,8 +66,12 @@ class TestSyncOrchestratorSuccess:
 
             # Flash summary: 16 bytes used
             client_instance.get_dataflash_summary.return_value = {
-                'flags': 0x03, 'sectors': 512, 'total_size': 8192,
-                'used_size': len(flash_data), 'supported': True, 'ready': True,
+                'flags': 0x03,
+                'sectors': 512,
+                'total_size': 8192,
+                'used_size': len(flash_data),
+                'supported': True,
+                'ready': True,
             }
 
             # Flash read: return in two 8-byte chunks
@@ -77,10 +81,12 @@ class TestSyncOrchestratorSuccess:
                 (16, b''),  # EOF
             ]
             call_idx = [0]
+
             def fake_read_chunk(address, size, compression=False):
                 result = chunk_calls[call_idx[0]]
                 call_idx[0] = min(call_idx[0] + 1, len(chunk_calls) - 1)
                 return result
+
             client_instance.read_flash_chunk.side_effect = fake_read_chunk
 
             orch = SyncOrchestrator(cfg, led, dry_run=False)
@@ -102,7 +108,7 @@ class TestSyncOrchestratorSuccess:
         assert manifest['fc']['uid'] == 'deadbeef12345678'
         assert manifest['file']['bytes'] == len(flash_data)
         assert 'sha256' in manifest['file']
-        assert manifest['erase_completed'] == False
+        assert manifest['erase_completed'] is False
 
     def test_already_empty_flash(self, tmpdir):
         """Flash with used_size=0 should return ALREADY_EMPTY."""
@@ -116,8 +122,12 @@ class TestSyncOrchestratorSuccess:
             client_instance.get_uid.return_value = 'aabb'
             client_instance.get_blackbox_config.return_value = {'device': BLACKBOX_DEVICE_FLASH}
             client_instance.get_dataflash_summary.return_value = {
-                'flags': 0x03, 'sectors': 512, 'total_size': 8192,
-                'used_size': 0, 'supported': True, 'ready': True,
+                'flags': 0x03,
+                'sectors': 512,
+                'total_size': 8192,
+                'used_size': 0,
+                'supported': True,
+                'ready': True,
             }
 
             orch = SyncOrchestrator(cfg, led)
@@ -145,7 +155,7 @@ class TestSyncOrchestratorSuccess:
 
     def test_dry_run_skips_erase(self, tmpdir):
         """dry_run=True should skip erase even if erase_after_sync=True."""
-        flash_data = b'\xDE\xAD\xBE\xEF' * 2
+        flash_data = b'\xde\xad\xbe\xef' * 2
 
         cfg = make_config(tmpdir, erase_after_sync=True)
         led = make_led()
@@ -157,16 +167,22 @@ class TestSyncOrchestratorSuccess:
             client_instance.get_uid.return_value = 'cafebabe'
             client_instance.get_blackbox_config.return_value = {'device': BLACKBOX_DEVICE_FLASH}
             client_instance.get_dataflash_summary.return_value = {
-                'flags': 0x03, 'sectors': 512, 'total_size': 8192,
-                'used_size': len(flash_data), 'supported': True, 'ready': True,
+                'flags': 0x03,
+                'sectors': 512,
+                'total_size': 8192,
+                'used_size': len(flash_data),
+                'supported': True,
+                'ready': True,
             }
 
             call_idx = [0]
             chunks = [(0, flash_data[:4]), (4, flash_data[4:]), (8, b'')]
+
             def fake_read(address, size, compression=False):
                 r = chunks[call_idx[0]]
                 call_idx[0] = min(call_idx[0] + 1, len(chunks) - 1)
                 return r
+
             client_instance.read_flash_chunk.side_effect = fake_read
 
             orch = SyncOrchestrator(cfg, led, dry_run=True)
@@ -195,6 +211,7 @@ class TestSyncOrchestratorErrors:
 
     def test_too_many_read_errors(self, tmpdir):
         from bbsyncer.msp.client import MSPError
+
         cfg = make_config(tmpdir, erase_after_sync=False)
         cfg.flash_chunk_size = 8
         led = make_led()
@@ -206,11 +223,15 @@ class TestSyncOrchestratorErrors:
             client_instance.get_uid.return_value = 'aabb'
             client_instance.get_blackbox_config.return_value = {'device': BLACKBOX_DEVICE_FLASH}
             client_instance.get_dataflash_summary.return_value = {
-                'flags': 0x03, 'sectors': 512, 'total_size': 8192,
-                'used_size': 64, 'supported': True, 'ready': True,
+                'flags': 0x03,
+                'sectors': 512,
+                'total_size': 8192,
+                'used_size': 64,
+                'supported': True,
+                'ready': True,
             }
             # Always raise MSPError
-            client_instance.read_flash_chunk.side_effect = MSPError("Serial timeout")
+            client_instance.read_flash_chunk.side_effect = MSPError('Serial timeout')
 
             orch = SyncOrchestrator(cfg, led)
             result = orch.run('/dev/ttyACM0')

@@ -11,6 +11,7 @@ Routes:
   GET  /hotspot-detect.html       iOS/macOS captive portal probe
   GET  /connecttest.txt           Windows captive portal probe
 """
+
 from __future__ import annotations
 
 import html
@@ -41,14 +42,16 @@ def _get_sessions(storage: Path) -> list:
     return data
 
 
-_CAPTIVE_PATHS = frozenset({
-    "/generate_204",
-    "/gen_204",
-    "/hotspot-detect.html",
-    "/library/test/success.html",
-    "/connecttest.txt",
-    "/ncsi.txt",
-})
+_CAPTIVE_PATHS = frozenset(
+    {
+        '/generate_204',
+        '/gen_204',
+        '/hotspot-detect.html',
+        '/library/test/success.html',
+        '/connecttest.txt',
+        '/ncsi.txt',
+    }
+)
 
 _CAPTIVE_HTML = (
     '<!DOCTYPE html><html><head>'
@@ -85,37 +88,34 @@ def _render_sessions(sessions: list) -> str:
     parts: list[str] = []
     current_fc: str | None = None
     for i, session in enumerate(sessions):
-        fc_dir = session["fc_dir"]
+        fc_dir = session['fc_dir']
         if fc_dir != current_fc:
             if current_fc is not None:
-                parts.append("</div></details>")
+                parts.append('</div></details>')
             current_fc = fc_dir
-            parts.append(
-                f'<details class="fc-group" open>\n'
-                f'<summary>{_e(fc_dir)}</summary>\n<div>'
-            )
+            parts.append(f'<details class="fc-group" open>\n<summary>{_e(fc_dir)}</summary>\n<div>')
 
-        m = session.get("manifest") or {}
-        fc = m.get("fc") or {}
-        file_info = m.get("file") or {}
-        fc_ver = fc.get("api_version", "?")
-        file_size = file_info.get("bytes", 0)
+        m = session.get('manifest') or {}
+        fc = m.get('fc') or {}
+        file_info = m.get('file') or {}
+        fc_ver = fc.get('api_version', '?')
+        file_size = file_info.get('bytes', 0)
         file_mb = round(file_size / 1048576, 1)
-        erased = m.get("erase_completed", False)
-        sha256 = file_info.get("sha256", "")
-        session_id = session["session_id"]
-        bbl_path = session.get("bbl_path")
+        erased = m.get('erase_completed', False)
+        sha256 = file_info.get('sha256', '')
+        session_id = session['session_id']
+        bbl_path = session.get('bbl_path')
 
-        erased_cls = "erased" if erased else "no-erase"
-        erased_txt = "Erased" if erased else "Not erased"
+        erased_cls = 'erased' if erased else 'no-erase'
+        erased_txt = 'Erased' if erased else 'Not erased'
         sha_html = (
-            f'<span title="{_e(sha256)}">SHA-256: {_e(sha256[:12])}…</span>'
-            if sha256 else ""
+            f'<span title="{_e(sha256)}">SHA-256: {_e(sha256[:12])}…</span>' if sha256 else ''
         )
         bbl_html = (
             f'<a class="btn btn-download" href="/download/{_e(session_id)}/raw_flash.bbl">'
             f'Download .bbl</a>'
-            if bbl_path else ""
+            if bbl_path
+            else ''
         )
         parts.append(
             f'<div class="session-card">'
@@ -137,9 +137,9 @@ def _render_sessions(sessions: list) -> str:
         )
 
         if i == len(sessions) - 1:
-            parts.append("</div></details>")
+            parts.append('</div></details>')
 
-    return "\n".join(parts)
+    return '\n'.join(parts)
 
 
 def _render_index(storage: Path) -> str:
@@ -390,17 +390,17 @@ def _render_index(storage: Path) -> str:
 
 def _resolve_session_path(storage: Path, session_id: str) -> Path:
     """Safely resolve a session_id like 'fc_BTFL_uid-abc/2026-02-26_143012'."""
-    parts = session_id.split("/")
+    parts = session_id.split('/')
     if len(parts) != 2:
         raise _HTTPError(400)
     fc_dir, session_dir = parts
-    if ".." in fc_dir or ".." in session_dir:
+    if '..' in fc_dir or '..' in session_dir:
         raise _HTTPError(400)
     try:
         path = storage / fc_dir / session_dir
         path.resolve().relative_to(storage.resolve())
     except ValueError:
-        raise _HTTPError(400)
+        raise _HTTPError(400) from None
     return path
 
 
@@ -417,49 +417,49 @@ def _make_handler(storage_path: str) -> type:
 
     class _Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            path = self.path.split("?")[0]
+            path = self.path.split('?')[0]
             try:
                 if path in _CAPTIVE_PATHS:
                     self._send_html(_CAPTIVE_HTML)
-                elif path == "/":
+                elif path == '/':
                     self._send_html(_render_index(storage))
-                elif path == "/sessions":
+                elif path == '/sessions':
                     self._send_json(_get_sessions(storage))
-                elif path == "/status":
+                elif path == '/status':
                     self._send_json(get_status())
-                elif path.startswith("/download/"):
-                    self._handle_download(path[len("/download/"):])
+                elif path.startswith('/download/'):
+                    self._handle_download(path[len('/download/') :])
                 else:
                     self._send_error_response(404)
             except _HTTPError as exc:
                 self._send_error_response(exc.code)
             except Exception:
-                log.exception("Unhandled error in GET %s", path)
+                log.exception('Unhandled error in GET %s', path)
                 self._send_error_response(500)
 
         def do_DELETE(self) -> None:
-            path = self.path.split("?")[0]
+            path = self.path.split('?')[0]
             try:
-                if path.startswith("/sessions/"):
-                    self._handle_delete_session(path[len("/sessions/"):])
+                if path.startswith('/sessions/'):
+                    self._handle_delete_session(path[len('/sessions/') :])
                 else:
                     self._send_error_response(404)
             except _HTTPError as exc:
                 self._send_error_response(exc.code)
             except Exception:
-                log.exception("Unhandled error in DELETE %s", path)
+                log.exception('Unhandled error in DELETE %s', path)
                 self._send_error_response(500)
 
         def _handle_download(self, sub_path: str) -> None:
             # sub_path is "<session_id>/<filename>"
-            if sub_path.endswith("/raw_flash.bbl"):
-                session_id = sub_path[: -len("/raw_flash.bbl")]
-                file_path = _resolve_session_file(storage, session_id, "raw_flash.bbl")
-                self._send_file(file_path, "raw_flash.bbl")
-            elif sub_path.endswith("/manifest.json"):
-                session_id = sub_path[: -len("/manifest.json")]
-                file_path = _resolve_session_file(storage, session_id, "manifest.json")
-                self._send_file(file_path, "manifest.json")
+            if sub_path.endswith('/raw_flash.bbl'):
+                session_id = sub_path[: -len('/raw_flash.bbl')]
+                file_path = _resolve_session_file(storage, session_id, 'raw_flash.bbl')
+                self._send_file(file_path, 'raw_flash.bbl')
+            elif sub_path.endswith('/manifest.json'):
+                session_id = sub_path[: -len('/manifest.json')]
+                file_path = _resolve_session_file(storage, session_id, 'manifest.json')
+                self._send_file(file_path, 'manifest.json')
             else:
                 raise _HTTPError(404)
 
@@ -470,51 +470,49 @@ def _make_handler(storage_path: str) -> type:
             shutil.rmtree(session_path)
             global _sessions_cache
             _sessions_cache = (0.0, [])  # invalidate
-            log.info("Deleted session: %s", session_path)
-            self._send_json({"deleted": True, "session_id": session_id})
+            log.info('Deleted session: %s', session_path)
+            self._send_json({'deleted': True, 'session_id': session_id})
 
         def _send_html(self, body: str, status: int = 200) -> None:
             data = body.encode()
             self.send_response(status)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(data)))
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(data)))
             self.end_headers()
             self.wfile.write(data)
 
         def _send_json(self, data: object, status: int = 200) -> None:
             body = json.dumps(data).encode()
             self.send_response(status)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
         def _send_file(self, path: Path, filename: str) -> None:
             size = path.stat().st_size
-            range_header = self.headers.get("Range")
-            if range_header and range_header.startswith("bytes="):
+            range_header = self.headers.get('Range')
+            if range_header and range_header.startswith('bytes='):
                 try:
                     range_spec = range_header[6:]
-                    start_str, end_str = range_spec.split("-", 1)
+                    start_str, end_str = range_spec.split('-', 1)
                     start = int(start_str) if start_str else 0
                     end = int(end_str) if end_str else size - 1
                     end = min(end, size - 1)
                     if start > end or start >= size:
                         self.send_response(416)
-                        self.send_header("Content-Range", f"bytes */{size}")
+                        self.send_header('Content-Range', f'bytes */{size}')
                         self.end_headers()
                         return
                     content_length = end - start + 1
                     self.send_response(206)
-                    self.send_header("Content-Type", "application/octet-stream")
-                    self.send_header(
-                        "Content-Disposition", f'attachment; filename="{filename}"'
-                    )
-                    self.send_header("Content-Length", str(content_length))
-                    self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
-                    self.send_header("Accept-Ranges", "bytes")
+                    self.send_header('Content-Type', 'application/octet-stream')
+                    self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                    self.send_header('Content-Length', str(content_length))
+                    self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+                    self.send_header('Accept-Ranges', 'bytes')
                     self.end_headers()
-                    with open(path, "rb") as f:
+                    with open(path, 'rb') as f:
                         f.seek(start)
                         remaining = content_length
                         while remaining > 0:
@@ -528,14 +526,12 @@ def _make_handler(storage_path: str) -> type:
                     pass  # Fall through to full response
 
             self.send_response(200)
-            self.send_header("Content-Type", "application/octet-stream")
-            self.send_header(
-                "Content-Disposition", f'attachment; filename="{filename}"'
-            )
-            self.send_header("Content-Length", str(size))
-            self.send_header("Accept-Ranges", "bytes")
+            self.send_header('Content-Type', 'application/octet-stream')
+            self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+            self.send_header('Content-Length', str(size))
+            self.send_header('Accept-Ranges', 'bytes')
             self.end_headers()
-            with open(path, "rb") as f:
+            with open(path, 'rb') as f:
                 while True:
                     chunk = f.read(1 << 20)  # 1 MB
                     if not chunk:
@@ -544,19 +540,19 @@ def _make_handler(storage_path: str) -> type:
 
         def _send_error_response(self, code: int) -> None:
             self.send_response(code)
-            self.send_header("Content-Type", "text/plain")
+            self.send_header('Content-Type', 'text/plain')
             self.end_headers()
-            self.wfile.write(f"{code} Error\n".encode())
+            self.wfile.write(f'{code} Error\n'.encode())
 
         def log_message(self, format: str, *args: object) -> None:
-            log.debug("%s %s", self.address_string(), format % args)
+            log.debug('%s %s', self.address_string(), format % args)
 
     return _Handler
 
 
-def run_server(storage_path: str = "/mnt/bbsyncer-logs", port: int = 80) -> None:
+def run_server(storage_path: str = '/mnt/bbsyncer-logs', port: int = 80) -> None:
     """Start the HTTP server."""
     handler = _make_handler(storage_path)
-    server = _ThreadedHTTPServer(("0.0.0.0", port), handler)
-    log.info("Starting web server on 0.0.0.0:%d", port)
+    server = _ThreadedHTTPServer(('0.0.0.0', port), handler)
+    log.info('Starting web server on 0.0.0.0:%d', port)
     server.serve_forever()

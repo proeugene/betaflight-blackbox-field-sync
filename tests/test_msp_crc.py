@@ -1,6 +1,6 @@
 """Tests for MSP CRC implementations."""
-import pytest
-from bbsyncer.msp.crc import crc8_xor, crc8_dvb_s2
+
+from bbsyncer.msp.crc import crc8_dvb_s2, crc8_xor
 
 
 class TestCRC8XOR:

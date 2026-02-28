@@ -6,12 +6,11 @@ Frame formats:
   v1: $M< + size(1B) + code(1B) + payload[size] + XOR-checksum(1B)
   v2: $X< + flag(1B,0) + code(2B LE) + size(2B LE) + payload[size] + CRC8-DVB-S2(1B)
 """
+
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
 from enum import IntEnum, auto
-from typing import Optional
 
 from .crc import crc8_dvb_s2, crc8_xor
 
@@ -37,8 +36,8 @@ class _State(IntEnum):
 
 @dataclass
 class MSPFrame:
-    version: int       # 1 or 2
-    direction: int     # ord('<') or ord('>')
+    version: int  # 1 or 2
+    direction: int  # ord('<') or ord('>')
     code: int
     payload: bytes = field(default=b'')
 
@@ -55,13 +54,15 @@ def encode_v2(code: int, payload: bytes = b'') -> bytes:
     """Encode an MSP v2 frame (to-FC direction)."""
     size = len(payload)
     # CRC covers: flag(0) + code_lo + code_hi + len_lo + len_hi + payload
-    header_for_crc = bytes([
-        0,                  # flag
-        code & 0xFF,        # code lo
-        (code >> 8) & 0xFF, # code hi
-        size & 0xFF,        # len lo
-        (size >> 8) & 0xFF, # len hi
-    ])
+    header_for_crc = bytes(
+        [
+            0,  # flag
+            code & 0xFF,  # code lo
+            (code >> 8) & 0xFF,  # code hi
+            size & 0xFF,  # len lo
+            (size >> 8) & 0xFF,  # len hi
+        ]
+    )
     crc = crc8_dvb_s2(header_for_crc + payload)
     return b'$X<' + header_for_crc + payload + bytes([crc])
 
@@ -81,7 +82,7 @@ class FrameDecoder:
         self._code = 0
         self._size = 0
         self._payload = bytearray()
-        self._checksum = 0       # running XOR for v1 or running CRC for v2
+        self._checksum = 0  # running XOR for v1 or running CRC for v2
         self._v2_header = bytearray()  # accumulate V2 header bytes for batch CRC
 
     def feed(self, data: bytes) -> None:
@@ -116,7 +117,7 @@ class FrameDecoder:
         # --- V1 ---
         elif s == _State.V1_LEN:
             self._size = b
-            self._checksum = b   # XOR starts with length byte
+            self._checksum = b  # XOR starts with length byte
             self._state = _State.V1_CODE
         elif s == _State.V1_CODE:
             self._code = b
@@ -133,12 +134,14 @@ class FrameDecoder:
                 self._state = _State.V1_CHECKSUM
         elif s == _State.V1_CHECKSUM:
             if b == self._checksum:
-                self.frames.append(MSPFrame(
-                    version=1,
-                    direction=self._direction,
-                    code=self._code,
-                    payload=bytes(self._payload),
-                ))
+                self.frames.append(
+                    MSPFrame(
+                        version=1,
+                        direction=self._direction,
+                        code=self._code,
+                        payload=bytes(self._payload),
+                    )
+                )
             # always reset regardless of checksum validity
             self._reset()
 
@@ -174,10 +177,12 @@ class FrameDecoder:
             # Compute CRC over header + payload in one batch call
             expected = crc8_dvb_s2(bytes(self._v2_header) + bytes(self._payload))
             if b == expected:
-                self.frames.append(MSPFrame(
-                    version=2,
-                    direction=self._direction,
-                    code=self._code,
-                    payload=bytes(self._payload),
-                ))
+                self.frames.append(
+                    MSPFrame(
+                        version=2,
+                        direction=self._direction,
+                        code=self._code,
+                        payload=bytes(self._payload),
+                    )
+                )
             self._reset()

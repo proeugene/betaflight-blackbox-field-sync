@@ -3,25 +3,20 @@
 Uses asyncio + pyserial-asyncio for non-blocking serial I/O.
 All public methods are async coroutines.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 import struct
 import time
-from typing import Optional
 
 import serial
 import serial.serialutil
 
 from .constants import (
-    BLACKBOX_DEVICE_FLASH,
-    BLACKBOX_DEVICE_NONE,
-    BLACKBOX_DEVICE_SDCARD,
     DATAFLASH_COMPRESSION_HUFFMAN,
     DATAFLASH_FLAG_READY,
     DATAFLASH_FLAG_SUPPORTED,
-    DATAFLASH_COMPRESSION_NONE,
     MSP_API_VERSION,
     MSP_BLACKBOX_CONFIG,
     MSP_DATAFLASH_ERASE,
@@ -35,8 +30,8 @@ from .huffman import huffman_decode
 
 log = logging.getLogger(__name__)
 
-_RESPONSE_TIMEOUT = 5.0   # seconds
-_READ_CHUNK = 4096         # bytes to read from serial at a time
+_RESPONSE_TIMEOUT = 5.0  # seconds
+_READ_CHUNK = 4096  # bytes to read from serial at a time
 
 
 class MSPError(Exception):
@@ -57,7 +52,7 @@ class MSPClient:
         self._port = port
         self._baud = baud
         self._timeout = timeout
-        self._ser: Optional[serial.Serial] = None
+        self._ser: serial.Serial | None = None
         self._decoder = FrameDecoder()
         self._pending: dict[int, MSPFrame] = {}
 
@@ -65,17 +60,17 @@ class MSPClient:
         self._ser = serial.Serial(
             self._port,
             baudrate=self._baud,
-            timeout=0.1,   # non-blocking reads
+            timeout=0.1,  # non-blocking reads
             write_timeout=2.0,
         )
-        log.debug("Opened serial port %s at %d baud", self._port, self._baud)
+        log.debug('Opened serial port %s at %d baud', self._port, self._baud)
 
     def close(self) -> None:
         if self._ser and self._ser.is_open:
             self._ser.close()
-            log.debug("Closed serial port %s", self._port)
+            log.debug('Closed serial port %s', self._port)
 
-    def __enter__(self) -> "MSPClient":
+    def __enter__(self) -> MSPClient:
         self.open()
         return self
 
@@ -89,7 +84,7 @@ class MSPClient:
     def send(self, code: int, payload: bytes = b'') -> None:
         """Send an MSP v1 request to the FC."""
         frame = encode_v1(code, payload)
-        log.debug("TX code=%d payload_len=%d", code, len(payload))
+        log.debug('TX code=%d payload_len=%d', code, len(payload))
         self._ser.write(frame)
         self._ser.flush()
 
@@ -107,9 +102,9 @@ class MSPClient:
                     self._pending[f.code] = f
             frame = self._pending.pop(code, None)
             if frame is not None and frame.direction == ord('>'):
-                log.debug("RX code=%d payload_len=%d", code, len(frame.payload))
+                log.debug('RX code=%d payload_len=%d', code, len(frame.payload))
                 return frame
-        raise MSPTimeoutError(f"Timeout waiting for MSP response code={code}")
+        raise MSPTimeoutError(f'Timeout waiting for MSP response code={code}')
 
     def request(self, code: int, payload: bytes = b'') -> MSPFrame:
         """Send request and wait for matching response."""
@@ -127,7 +122,7 @@ class MSPClient:
         """Return (major, minor) API version."""
         frame = self.request(MSP_API_VERSION)
         if len(frame.payload) < 3:
-            raise MSPError("Short API_VERSION response")
+            raise MSPError('Short API_VERSION response')
         # payload: protocol_version(1) + api_major(1) + api_minor(1) + ...
         return frame.payload[1], frame.payload[2]
 
@@ -140,7 +135,7 @@ class MSPClient:
         """Return FC unique ID as a hex string."""
         frame = self.request(MSP_UID)
         if len(frame.payload) < 12:
-            return "unknown"
+            return 'unknown'
         uid_bytes = frame.payload[:12]
         return uid_bytes.hex()
 
@@ -148,24 +143,24 @@ class MSPClient:
         """Return blackbox device type and config."""
         frame = self.request(MSP_BLACKBOX_CONFIG)
         if len(frame.payload) < 1:
-            raise MSPError("Short BLACKBOX_CONFIG response")
+            raise MSPError('Short BLACKBOX_CONFIG response')
         return {
-            "device": frame.payload[0],
+            'device': frame.payload[0],
         }
 
     def get_dataflash_summary(self) -> dict:
         """Return flash summary: flags, sectors, total_size, used_size."""
         frame = self.request(MSP_DATAFLASH_SUMMARY)
         if len(frame.payload) < 13:
-            raise MSPError(f"Short DATAFLASH_SUMMARY response (len={len(frame.payload)})")
+            raise MSPError(f'Short DATAFLASH_SUMMARY response (len={len(frame.payload)})')
         flags, sectors, total_size, used_size = struct.unpack_from('<BIII', frame.payload)
         return {
-            "flags": flags,
-            "sectors": sectors,
-            "total_size": total_size,
-            "used_size": used_size,
-            "supported": bool(flags & DATAFLASH_FLAG_SUPPORTED),
-            "ready": bool(flags & DATAFLASH_FLAG_READY),
+            'flags': flags,
+            'sectors': sectors,
+            'total_size': total_size,
+            'used_size': used_size,
+            'supported': bool(flags & DATAFLASH_FLAG_SUPPORTED),
+            'ready': bool(flags & DATAFLASH_FLAG_READY),
         }
 
     def read_flash_chunk(
@@ -183,14 +178,14 @@ class MSPClient:
         frame = self.request(MSP_DATAFLASH_READ, payload)
         p = frame.payload
         if len(p) < 7:
-            raise MSPError(f"Short DATAFLASH_READ response (len={len(p)})")
+            raise MSPError(f'Short DATAFLASH_READ response (len={len(p)})')
 
         chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', p)
-        raw_data = p[7:7 + data_size]
+        raw_data = p[7 : 7 + data_size]
 
         if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
             if len(raw_data) < 2:
-                raise MSPError("Compressed chunk too short for char count header")
+                raise MSPError('Compressed chunk too short for char count header')
             char_count = struct.unpack_from('<H', raw_data)[0]
             data = huffman_decode(raw_data[2:], char_count)
         else:
@@ -201,4 +196,4 @@ class MSPClient:
     def erase_flash(self) -> None:
         """Send MSP_DATAFLASH_ERASE (fire-and-forget; FC erases asynchronously)."""
         self.send(MSP_DATAFLASH_ERASE)
-        log.info("Sent DATAFLASH_ERASE command")
+        log.info('Sent DATAFLASH_ERASE command')
