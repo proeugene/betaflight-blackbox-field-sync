@@ -34,3 +34,6 @@ htmlcov/
 
 # Local config overrides (keep config/bbsyncer.toml as the template)
 /config/bbsyncer.local.toml
+
+# pi-gen build artifacts
+pi-gen/pi-gen-repo/

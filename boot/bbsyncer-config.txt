@@ -1,0 +1,9 @@
+# Betaflight Blackbox Syncer — Configuration
+# Edit this file before inserting the SD card into your Pi.
+# Lines starting with # are comments.
+
+# Wi-Fi hotspot name (what you'll see on your phone)
+SSID=BF-Blackbox
+
+# Wi-Fi password (minimum 8 characters, WPA2)
+PASSWORD=fpvpilot

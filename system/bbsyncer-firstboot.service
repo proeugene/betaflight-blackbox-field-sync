@@ -1,0 +1,18 @@
+# systemd unit for bbsyncer boot-time config application
+# Reads /boot/firmware/bbsyncer-config.txt and updates hostapd + app config.
+# Install to: /etc/systemd/system/bbsyncer-firstboot.service
+# Enable: sudo systemctl enable bbsyncer-firstboot.service
+
+[Unit]
+Description=Betaflight Blackbox Syncer Boot Config
+Documentation=https://github.com/proeugene/betaflight-blackbox-field-sync
+After=local-fs.target
+Before=hostapd.service bbsyncer-web.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/bbsyncer/firstboot.sh
+
+[Install]
+WantedBy=multi-user.target

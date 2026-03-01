@@ -1,0 +1,84 @@
+name: Build SD Card Image
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      upload_artifact:
+        description: 'Upload image as workflow artifact (useful for testing)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache pi-gen
+        uses: actions/cache@v4
+        with:
+          path: pi-gen/pi-gen-repo
+          key: pi-gen-${{ hashFiles('pi-gen/config') }}
+          restore-keys: pi-gen-
+
+      - name: Clone pi-gen
+        run: |
+          if [ ! -d pi-gen/pi-gen-repo ]; then
+            git clone --depth 1 https://github.com/RPi-Distro/pi-gen.git pi-gen/pi-gen-repo
+          fi
+
+      - name: Configure pi-gen
+        run: |
+          # Copy our config and custom stage
+          cp pi-gen/config pi-gen/pi-gen-repo/config
+          rm -rf pi-gen/pi-gen-repo/stage-bbsyncer
+          cp -r pi-gen/stage-bbsyncer pi-gen/pi-gen-repo/stage-bbsyncer
+
+          # Skip desktop stages (3, 4, 5)
+          touch pi-gen/pi-gen-repo/stage3/SKIP pi-gen/pi-gen-repo/stage3/SKIP_IMAGES
+          touch pi-gen/pi-gen-repo/stage4/SKIP pi-gen/pi-gen-repo/stage4/SKIP_IMAGES
+          touch pi-gen/pi-gen-repo/stage5/SKIP pi-gen/pi-gen-repo/stage5/SKIP_IMAGES
+
+          # Don't export images from intermediate stages
+          touch pi-gen/pi-gen-repo/stage2/SKIP_IMAGES
+
+      - name: Build image
+        run: |
+          cd pi-gen/pi-gen-repo
+          sudo ./build.sh
+        env:
+          CLEAN: 1
+
+      - name: Compress image
+        run: |
+          cd pi-gen/pi-gen-repo/deploy
+          IMAGE_FILE=$(ls *.img 2>/dev/null | head -1)
+          if [ -n "$IMAGE_FILE" ]; then
+            xz -9 -T0 "$IMAGE_FILE"
+            echo "IMAGE_NAME=${IMAGE_FILE}.xz" >> $GITHUB_ENV
+            echo "IMAGE_PATH=pi-gen/pi-gen-repo/deploy/${IMAGE_FILE}.xz" >> $GITHUB_ENV
+          fi
+
+      - name: Upload artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbsyncer-image
+          path: ${{ env.IMAGE_PATH }}
+          retention-days: 7
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.IMAGE_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

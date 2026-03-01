@@ -1,0 +1,53 @@
+#!/bin/bash -e
+# Configure Wi-Fi hotspot
+
+HOTSPOT_IP="192.168.4.1"
+
+# Static IP on wlan0
+cat > /etc/network/interfaces.d/wlan0-static <<EOF
+auto wlan0
+iface wlan0 inet static
+    address ${HOTSPOT_IP}
+    netmask 255.255.255.0
+EOF
+
+# hostapd config (defaults — overridden by firstboot from bbsyncer-config.txt)
+cat > /etc/hostapd/hostapd.conf <<EOF
+interface=wlan0
+driver=nl80211
+ssid=BF-Blackbox
+wpa_passphrase=fpvpilot
+hw_mode=g
+channel=6
+ieee80211n=1
+wmm_enabled=1
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+beacon_int=100
+dtim_period=2
+max_num_sta=8
+country_code=US
+ieee80211d=1
+EOF
+
+# Enable hostapd config
+sed -i 's|#DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd 2>/dev/null || true
+
+# dnsmasq config
+cat > /etc/dnsmasq.d/bbsyncer.conf <<EOF
+interface=wlan0
+bind-interfaces
+dhcp-range=192.168.4.2,192.168.4.20,24h
+dhcp-option=option:router,${HOTSPOT_IP}
+address=/#/${HOTSPOT_IP}
+EOF
+
+grep -q "^no-resolv" /etc/dnsmasq.conf 2>/dev/null || echo "no-resolv" >> /etc/dnsmasq.conf
+
+# avahi mDNS hostname
+sed -i 's/^#*host-name=.*/host-name=blackboxdata/' /etc/avahi/avahi-daemon.conf 2>/dev/null || true
+
+# Unblock Wi-Fi at boot
+rfkill unblock wlan 2>/dev/null || true

@@ -53,9 +53,25 @@ No extra hardware needed for the LED — the Pi's built-in ACT LED is used.
 
 ---
 
-## Install
+## Quick Start (Recommended)
 
-Flash **Raspberry Pi OS Lite (64-bit, bookworm)** to the SD card, then SSH in and run:
+1. **Download** the latest `bbsyncer-*.img.xz` from [Releases](https://github.com/proeugene/betaflight-blackbox-field-sync/releases)
+2. **Burn** it to a microSD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) or [Balena Etcher](https://etcher.balena.io/)
+3. **(Optional) Customize** — before ejecting the SD card, open the `boot` partition and edit `bbsyncer-config.txt`:
+   ```ini
+   SSID=BF-Blackbox
+   PASSWORD=fpvpilot
+   ```
+4. **Insert** the SD card into your Pi Zero W and power on
+5. **Fly** — the Pi is ready. Plug in an FC to sync, connect to the Wi-Fi to download logs.
+
+> You can also change the SSID and password later from the web UI: connect to the hotspot → click the ⚙ gear icon.
+
+---
+
+## Developer Install
+
+If you prefer to install on an existing Raspberry Pi OS setup (or want to contribute), flash **Raspberry Pi OS Lite (64-bit, bookworm)** to the SD card, SSH in, and run:
 
 ```bash
 git clone https://github.com/proeugene/betaflight-blackbox-field-sync
@@ -63,7 +79,7 @@ cd betaflight-blackbox-field-sync
 sudo bash install.sh --ssid "BF-Blackbox" --password "your-password"
 ```
 
-That's it. The install script handles everything:
+The install script handles everything:
 
 - Python package installed to `/opt/bbsyncer/`
 - Wi-Fi hotspot configured (hostapd + dnsmasq)
@@ -83,11 +99,11 @@ That's it. The install script handles everything:
 4. You'll see all your sessions listed, grouped by FC
 5. Tap **Download .bbl** — opens in [Betaflight Blackbox Explorer](https://github.com/betaflight/blackbox-log-viewer) on desktop, or the [Blackbox Explorer app](https://apps.apple.com/app/betaflight-blackbox-explorer) on iOS/Android
 
-The web UI also shows Pi SD card free space, lets you delete old sessions to reclaim space, and displays live sync status while a download is in progress.
+The web UI also shows Pi SD card free space, lets you delete old sessions to reclaim space, displays live sync status while a download is in progress, and has a ⚙ Settings page to change the Wi-Fi SSID and password.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Betaflight Blackbox Syncer              [Idle]  │
+│  Betaflight Blackbox Syncer         ⚙    [Idle]  │
 ├─────────────────────────────────────────────────┤
 │  fc_BTFL_uid-12ab34cd                           │
 │  ─────────────────────────────────────────────  │
@@ -272,6 +288,17 @@ docker build -t bbsyncer-web .
 docker run --rm -p 8080:8080 -v /tmp/bbsyncer-test:/data bbsyncer-web
 # Open http://localhost:8080
 ```
+
+### Building the SD card image
+
+The pre-built image is generated using [pi-gen](https://github.com/RPi-Distro/pi-gen). To build locally (requires Docker):
+
+```bash
+cd pi-gen
+bash build.sh
+```
+
+This takes 30–60 minutes on first run. The output image is in `pi-gen/pi-gen-repo/deploy/`. Images are also built automatically by CI on every GitHub release.
 
 ---
 

@@ -2,6 +2,8 @@
 
 Routes:
   GET  /                          Main UI page
+  GET  /settings                  Settings page (Wi-Fi config)
+  POST /settings                  Save Wi-Fi settings
   GET  /sessions                  JSON: all sessions
   GET  /download/<session_id>/raw_flash.bbl
   GET  /download/<session_id>/manifest.json
@@ -20,11 +22,14 @@ import html
 import json
 import logging
 import os
+import re
 import shutil
 import socketserver
+import subprocess
 import time as _time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 
 from bbsyncer.storage.manifest import list_sessions
 from bbsyncer.sync.orchestrator import get_status
@@ -64,6 +69,45 @@ _CAPTIVE_HTML = (
     '<p>Redirecting to <a href="/">Blackbox Syncer</a>...</p>'
     '</body></html>'
 )
+
+
+_HOSTAPD_CONF = '/etc/hostapd/hostapd.conf'
+_BBSYNCER_TOML = '/etc/bbsyncer/bbsyncer.toml'
+_BOOT_CONFIG = '/boot/firmware/bbsyncer-config.txt'
+
+
+def _read_hostapd_config() -> dict[str, str]:
+    """Read /etc/hostapd/hostapd.conf and return key=value pairs."""
+    try:
+        text = Path(_HOSTAPD_CONF).read_text()
+        result: dict[str, str] = {}
+        for line in text.splitlines():
+            line = line.strip()
+            if '=' in line and not line.startswith('#'):
+                key, _, value = line.partition('=')
+                result[key.strip()] = value.strip()
+        return result
+    except OSError:
+        log.warning('Could not read %s', _HOSTAPD_CONF)
+        return {}
+
+
+def _update_config_file(path: str, replacements: dict[str, str]) -> bool:
+    """Replace lines starting with key= (or key =) for each key in replacements."""
+    try:
+        text = Path(path).read_text()
+        for key, value in replacements.items():
+            text = re.sub(
+                rf'^(\s*{re.escape(key)}\s*=).*$',
+                rf'\g<1>{value}',
+                text,
+                flags=re.MULTILINE,
+            )
+        Path(path).write_text(text)
+        return True
+    except OSError:
+        log.warning('Could not update %s', path)
+        return False
 
 
 class _HTTPError(Exception):
@@ -300,6 +344,7 @@ def _render_index(storage: Path) -> str:
 
 <header>
   <h1>Betaflight Blackbox Syncer</h1>
+  <a href="/settings" style="color:#a0a0b8; text-decoration:none; font-size:1.2rem;" title="Settings">&#9881;</a>
   <span id="status-badge">Idle</span>
 </header>
 
@@ -391,6 +436,95 @@ def _render_index(storage: Path) -> str:
 </html>"""
 
 
+_SETTINGS_CSS = """\
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0; padding: 0;
+      background: #0f0f12;
+      color: #e0e0e8;
+      min-height: 100vh;
+    }
+    header {
+      background: #1a1a24;
+      border-bottom: 1px solid #2e2e40;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    main { max-width: 700px; margin: 0 auto; padding: 16px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.85rem; color: #a0a0b8; margin-bottom: 4px; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 8px 12px;
+      background: #1a1a24; border: 1px solid #2e2e40;
+      border-radius: 6px; color: #e0e0e8; font-size: 0.9rem;
+    }
+    .btn-save {
+      display: inline-block; padding: 8px 20px;
+      background: #2a4a80; color: #a0c8ff;
+      border: none; border-radius: 6px;
+      font-size: 0.9rem; cursor: pointer; font-weight: 500;
+    }
+    .btn-save:hover { opacity: 0.8; }
+    .back-link { color: #a0a0b8; text-decoration: none; font-size: 0.85rem; }
+    .back-link:hover { color: #e0e0e8; }
+    .msg-error { background: #3a1a1a; color: #ff6060; padding: 10px 14px;
+      border-radius: 6px; margin-bottom: 16px; font-size: 0.85rem; }
+    .msg-success { background: #1a3a1a; color: #60d060; padding: 10px 14px;
+      border-radius: 6px; margin-bottom: 16px; font-size: 0.85rem; }
+    .current-info { background: #1a1a24; border: 1px solid #2e2e40;
+      border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
+      font-size: 0.85rem; color: #a0a0b8; }
+"""
+
+
+def _render_settings(message: str = '', error: bool = False) -> str:
+    hostapd = _read_hostapd_config()
+    current_ssid = _e(hostapd.get('ssid', 'Unknown'))
+    current_pass = _e(hostapd.get('wpa_passphrase', 'Unknown'))
+    msg_html = ''
+    if message:
+        cls = 'msg-error' if error else 'msg-success'
+        msg_html = f'<div class="{cls}">{_e(message)}</div>'
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Betaflight Blackbox Syncer</title>
+  <style>{_SETTINGS_CSS}</style>
+</head>
+<body>
+<header>
+  <h1>Settings</h1>
+</header>
+<main>
+  <a class="back-link" href="/">&larr; Back</a>
+  {msg_html}
+  <div class="current-info">
+    <strong>Current SSID:</strong> {current_ssid}<br>
+    <strong>Current Password:</strong> {current_pass}
+  </div>
+  <form method="POST" action="/settings">
+    <div class="form-group">
+      <label for="ssid">New SSID (1–32 characters)</label>
+      <input type="text" id="ssid" name="ssid" required minlength="1" maxlength="32">
+    </div>
+    <div class="form-group">
+      <label for="password">New Password (8–63 characters)</label>
+      <input type="password" id="password" name="password" required minlength="8" maxlength="63">
+    </div>
+    <button type="submit" class="btn-save">Save</button>
+  </form>
+</main>
+</body>
+</html>"""
+
+
 def _resolve_session_path(storage: Path, session_id: str) -> Path:
     """Safely resolve a session_id like 'fc_BTFL_uid-abc/2026-02-26_143012'."""
     parts = session_id.split('/')
@@ -432,6 +566,8 @@ def _make_handler(storage_path: str) -> type:
                     self._send_json(get_status())
                 elif path.startswith('/download/'):
                     self._handle_download(path[len('/download/') :])
+                elif path == '/settings':
+                    self._send_html(_render_settings())
                 else:
                     self._send_error_response(404)
             except _HTTPError as exc:
@@ -452,6 +588,59 @@ def _make_handler(storage_path: str) -> type:
             except Exception:
                 log.exception('Unhandled error in DELETE %s', path)
                 self._send_error_response(500)
+
+        def do_POST(self) -> None:
+            path = self.path.split('?')[0]
+            try:
+                if path == '/settings':
+                    self._handle_settings_post()
+                else:
+                    self._send_error_response(404)
+            except _HTTPError as exc:
+                self._send_error_response(exc.code)
+            except Exception:
+                log.exception('Unhandled error in POST %s', path)
+                self._send_error_response(500)
+
+        def _handle_settings_post(self) -> None:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            params = parse_qs(body)
+            ssid = params.get('ssid', [''])[0].strip()
+            password = params.get('password', [''])[0].strip()
+
+            if not ssid or len(ssid) > 32:
+                self._send_html(
+                    _render_settings('SSID must be 1–32 characters.', error=True), status=400
+                )
+                return
+            if len(password) < 8 or len(password) > 63:
+                self._send_html(
+                    _render_settings('Password must be 8–63 characters.', error=True), status=400
+                )
+                return
+
+            _update_config_file(_HOSTAPD_CONF, {'ssid': ssid, 'wpa_passphrase': password})
+            _update_config_file(
+                _BBSYNCER_TOML,
+                {'hotspot_ssid': f' "{ssid}"', 'hotspot_password': f' "{password}"'},
+            )
+            _update_config_file(_BOOT_CONFIG, {'SSID': ssid, 'PASSWORD': password})
+
+            try:
+                subprocess.run(
+                    ['systemctl', 'restart', 'hostapd'],
+                    capture_output=True,
+                    check=False,
+                )
+            except OSError:
+                log.warning('Could not restart hostapd')
+
+            msg = (
+                f'Settings saved! Wi-Fi hotspot is now: {ssid}. '
+                'You may need to reconnect to the new network.'
+            )
+            self._send_html(_render_settings(msg))
 
         def _handle_download(self, sub_path: str) -> None:
             # sub_path is "<session_id>/<filename>"

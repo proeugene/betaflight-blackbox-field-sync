@@ -1,0 +1,13 @@
+IMG_NAME=bbsyncer
+RELEASE=bookworm
+TARGET_HOSTNAME=blackboxdata
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT=UTC
+FIRST_USER_NAME=pi
+FIRST_USER_PASSWD=raspberry
+LOCALE_DEFAULT=en_US.UTF-8
+ENABLE_SSH=1
+
+# Skip stages 3-5 (desktop, etc.) — we only want Lite
+STAGE_LIST="stage0 stage1 stage2 stage-bbsyncer"

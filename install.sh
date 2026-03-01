@@ -155,11 +155,22 @@ ip link set wlan0 up 2>/dev/null || true
 echo "[6/8] Installing systemd units..."
 cp "$SCRIPT_DIR/system/bbsyncer@.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/system/bbsyncer-web.service" /etc/systemd/system/
+
+# Firstboot config service
+cp "$SCRIPT_DIR/system/firstboot.sh" "$INSTALL_DIR/firstboot.sh"
+chmod +x "$INSTALL_DIR/firstboot.sh"
+cp "$SCRIPT_DIR/system/bbsyncer-firstboot.service" /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable bbsyncer-firstboot.service
 systemctl enable bbsyncer-web.service
 systemctl enable hostapd
 systemctl enable dnsmasq
 systemctl enable avahi-daemon
+
+# Boot partition config (user-editable)
+if [[ ! -f /boot/firmware/bbsyncer-config.txt ]]; then
+  cp "$SCRIPT_DIR/boot/bbsyncer-config.txt" /boot/firmware/bbsyncer-config.txt
+fi
 
 ### --- 7. udev rule --- ###
 echo "[7/8] Installing udev rule..."
