@@ -22,18 +22,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache pi-gen
-        uses: actions/cache@v4
-        with:
-          path: pi-gen/pi-gen-repo
-          key: pi-gen-${{ hashFiles('pi-gen/config') }}
-          restore-keys: pi-gen-
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
+
+      - name: Install QEMU for ARM emulation
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
 
       - name: Clone pi-gen
-        run: |
-          if [ ! -d pi-gen/pi-gen-repo ]; then
-            git clone --depth 1 https://github.com/RPi-Distro/pi-gen.git pi-gen/pi-gen-repo
-          fi
+        run: git clone --depth 1 https://github.com/RPi-Distro/pi-gen.git pi-gen/pi-gen-repo
 
       - name: Configure pi-gen
         run: |
@@ -42,7 +40,13 @@ jobs:
           rm -rf pi-gen/pi-gen-repo/stage-bbsyncer
           cp -r pi-gen/stage-bbsyncer pi-gen/pi-gen-repo/stage-bbsyncer
 
-          # Skip desktop stages (3, 4, 5)
+          # Copy project source into pi-gen so scripts can access it
+          rm -rf pi-gen/pi-gen-repo/bbsyncer-src
+          rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
+              --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
+              ./ pi-gen/pi-gen-repo/bbsyncer-src/
+
+          # Skip desktop stages (safety net — STAGE_LIST already limits stages)
           touch pi-gen/pi-gen-repo/stage3/SKIP pi-gen/pi-gen-repo/stage3/SKIP_IMAGES
           touch pi-gen/pi-gen-repo/stage4/SKIP pi-gen/pi-gen-repo/stage4/SKIP_IMAGES
           touch pi-gen/pi-gen-repo/stage5/SKIP pi-gen/pi-gen-repo/stage5/SKIP_IMAGES
@@ -53,18 +57,24 @@ jobs:
       - name: Build image
         run: |
           cd pi-gen/pi-gen-repo
-          sudo ./build.sh
+          ./build-docker.sh
         env:
           CLEAN: 1
+          CONTINUE: 0
+          PRESERVE_CONTAINER: 0
 
       - name: Compress image
         run: |
+          ls -la pi-gen/pi-gen-repo/deploy/ || true
           cd pi-gen/pi-gen-repo/deploy
           IMAGE_FILE=$(ls *.img 2>/dev/null | head -1)
           if [ -n "$IMAGE_FILE" ]; then
             xz -9 -T0 "$IMAGE_FILE"
             echo "IMAGE_NAME=${IMAGE_FILE}.xz" >> $GITHUB_ENV
             echo "IMAGE_PATH=pi-gen/pi-gen-repo/deploy/${IMAGE_FILE}.xz" >> $GITHUB_ENV
+          else
+            echo "::error::No .img file found in deploy directory"
+            exit 1
           fi
 
       - name: Upload artifact

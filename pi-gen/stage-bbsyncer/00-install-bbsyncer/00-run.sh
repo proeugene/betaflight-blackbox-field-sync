@@ -1,6 +1,14 @@
 #!/bin/bash -e
 # Copy source code into chroot for installation
-REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+# BASE_DIR is exported by pi-gen's build.sh and points to the pi-gen root.
+# The CI workflow and local build.sh copy the project source to bbsyncer-src/.
+REPO_ROOT="${BASE_DIR}/bbsyncer-src"
+
+if [ ! -d "${REPO_ROOT}" ]; then
+    echo "ERROR: bbsyncer source not found at ${REPO_ROOT}"
+    echo "Ensure the project source is copied into the pi-gen directory before building."
+    exit 1
+fi
 
 mkdir -p "${ROOTFS_DIR}/tmp/bbsyncer-src"
 # Copy source (exclude .git, .venv, etc.)

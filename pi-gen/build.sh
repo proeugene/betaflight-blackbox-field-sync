@@ -22,7 +22,13 @@ cp "$SCRIPT_DIR/config" "$SCRIPT_DIR/pi-gen-repo/config"
 rm -rf "$SCRIPT_DIR/pi-gen-repo/stage-bbsyncer"
 cp -r "$SCRIPT_DIR/stage-bbsyncer" "$SCRIPT_DIR/pi-gen-repo/stage-bbsyncer"
 
-# Skip stages 3, 4, 5 (we only want Lite + our stage)
+# Copy project source into pi-gen so it's accessible inside the Docker build
+rm -rf "$SCRIPT_DIR/pi-gen-repo/bbsyncer-src"
+rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
+    --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
+    "$REPO_ROOT/" "$SCRIPT_DIR/pi-gen-repo/bbsyncer-src/"
+
+# Skip stages 3, 4, 5 (safety net — STAGE_LIST already limits to 0-2 + bbsyncer)
 touch "$SCRIPT_DIR/pi-gen-repo/stage3/SKIP" "$SCRIPT_DIR/pi-gen-repo/stage3/SKIP_IMAGES"
 touch "$SCRIPT_DIR/pi-gen-repo/stage4/SKIP" "$SCRIPT_DIR/pi-gen-repo/stage4/SKIP_IMAGES"
 touch "$SCRIPT_DIR/pi-gen-repo/stage5/SKIP" "$SCRIPT_DIR/pi-gen-repo/stage5/SKIP_IMAGES"
