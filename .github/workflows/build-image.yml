@@ -2,11 +2,8 @@ name: Build SD Card Image
 
 on:
   push:
-    paths:
-      - 'pi-gen/**'
-      - '.github/workflows/build-image.yml'
-  release:
-    types: [published]
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       upload_artifact:
@@ -82,17 +79,18 @@ jobs:
           fi
 
       - name: Upload artifact
-        if: github.event_name != 'release'
+        if: startsWith(github.ref, 'refs/tags/') != true
         uses: actions/upload-artifact@v4
         with:
           name: bbsyncer-image
           path: ${{ env.IMAGE_PATH }}
           retention-days: 7
 
-      - name: Upload to release
-        if: github.event_name == 'release'
+      - name: Create release and upload image
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.IMAGE_PATH }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
