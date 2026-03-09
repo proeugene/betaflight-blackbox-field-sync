@@ -8,14 +8,14 @@
 
 ## Executive Summary
 
-LogFalcon currently supports **Betaflight only**. This document analyses what it would take to support **iNav** and **ArduPilot** flight controllers.
+LogFalcon now supports **Betaflight and iNav**. This document analyses the feasibility work done to add iNav support (shipped in v0.2.0) and why ArduPilot support was deferred.
 
-| FC Firmware | Effort | Feasibility | Estimated LOC Change | Business Value |
-|---|---|---|---|---|
-| **iNav** | 🟢 Low–Medium | Excellent | ~150–200 lines | High — large user overlap |
-| **ArduPilot** | 🔴 Very High | Questionable | ~1,500+ lines (new module) | Low — different user base, different workflow |
+| FC Firmware | Effort | Feasibility | Estimated LOC Change | Business Value | Status |
+|---|---|---|---|---|---|
+| **iNav** | 🟢 Low–Medium | Excellent | ~150–200 lines | High — large user overlap | ✅ **SHIPPED in v0.2.0** |
+| **ArduPilot** | 🔴 Very High | Questionable | ~1,500+ lines (new module) | Low — different user base, different workflow | ⛔ Deferred indefinitely |
 
-**Recommendation**: Prioritise iNav support for v0.2.0. Defer ArduPilot indefinitely — it requires a fundamentally different protocol (MAVLink) and is better served by a separate tool.
+**Result**: iNav support shipped in v0.2.0 with ~200 LOC across 9 files. Zero breaking changes. ArduPilot deferred — requires MAVLink protocol, better served by a separate tool.
 
 ---
 
@@ -461,11 +461,16 @@ USB Serial ────────────►│ Auto-Detect  │
 
 ## 8. Recommendation
 
-### Phase 1: iNav Support (v0.2.0) — **DO THIS**
+### Phase 1: iNav Support (v0.2.0) — ✅ **SHIPPED**
 
-Add iNav as a first-class supported FC firmware. The protocol is 95% identical — only the DATAFLASH_READ response format differs, and BLACKBOX_CONFIG needs a fallback.
+iNav is now a first-class supported FC firmware as of v0.2.0. Changes made across 9 files (~200 LOC). No new dependencies. Full backwards compatibility with Betaflight workflows.
 
-**Key changes**: ~200 lines across 9 files. No new dependencies. Full backwards compatibility.
+**Key changes shipped:**
+- Variant-aware MSP parsing in `client.py` (iNav DATAFLASH_READ has no length/compression header)
+- BLACKBOX_CONFIG skipped for iNav (deprecated command returns all-zeros)
+- Dynamic `fc_{variant}_uid-*` directory naming in manifests
+- Compression suppression for non-Betaflight FCs
+- 7 new tests (166 total), all passing
 
 ### Phase 2: ArduPilot — **DO NOT DO THIS** (for now)
 

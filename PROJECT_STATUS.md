@@ -2,13 +2,13 @@
 
 ## What this project is
 
-FPV pilots who use Betaflight blackbox logging on internal SPI flash hit a recurring wall: the flash is small, fills up fast, and when it's full, logging stops mid-session. Before this project, the only ways to clear it were a laptop with Betaflight Configurator, or an expensive third-party USB dongle — both require extra hardware and often mean leaving the field.
+FPV pilots who use Betaflight or iNav blackbox logging on internal SPI flash hit a recurring wall: the flash is small, fills up fast, and when it's full, logging stops mid-session. Before this project, the only ways to clear it were a laptop with Betaflight/iNav Configurator, or an expensive third-party USB dongle — both require extra hardware and often mean leaving the field.
 
 LogFalcon is a pocket-sized Raspberry Pi Zero W / Zero 2 W appliance that removes that friction entirely. Plug the FC in, wait for the LED (~30–40 s), unplug, fly again. Repeat as many times as needed. All synced logs are timestamped, organised by FC, and available over the Pi's Wi-Fi hotspot from any phone when you're done flying.
 
 Internally it:
 
-1. detects a plugged-in Betaflight FC over USB
+1. detects a plugged-in Betaflight or iNav FC over USB
 2. reads the blackbox flash over MSP
 3. saves the raw log to the Pi SD card
 4. verifies the copy with SHA-256
@@ -17,7 +17,7 @@ Internally it:
 
 ## What problem it solves
 
-FC onboard SPI flash is small — typically 2–4 MB. A few packs and it's full; Betaflight silently stops logging. Before this project, clearing it meant:
+FC onboard SPI flash is small — typically 2–4 MB. A few packs and it's full; Betaflight/iNav silently stops logging. Before this project, clearing it meant:
 
 - connecting to a **laptop**, opening Betaflight Configurator, downloading or discarding logs manually — or —
 - buying and carrying a **third-party USB dongle** that connects to a phone
@@ -29,7 +29,7 @@ Both options require leaving the field or spending money on extra hardware. This
 ### Core sync workflow
 
 - automatic FC detection through USB CDC-ACM
-- Betaflight compatibility checks over MSP
+- Betaflight and iNav compatibility checks over MSP
 - flash summary query before sync
 - full blackbox flash copy to SD card
 - SHA-256 verification before erase
@@ -75,7 +75,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - **Optional acceleration:** native C extension in `logfalcon/_native/_msp_fast.c`
 - **Protocol:** MSP
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
-- **Current version:** `0.1.3`
+- **Current version:** `0.2.0`
 
 ## Major project areas
 
@@ -96,22 +96,34 @@ Both options require leaving the field or spending money on extra hardware. This
 - safe copy -> verify -> erase ordering
 - lightweight, dependency-minimal web stack
 - good packaging for a Pi appliance
-- clear compatibility with Betaflight blackbox workflows
+- clear compatibility with Betaflight and iNav blackbox workflows
 
 ### Current validation status
 
-- automated tests passing: **159 tests**
+- automated tests passing: **166 tests**
 - lint and formatting checks passing
-- version bumped to **0.1.3**
+- version bumped to **0.2.0**
 - recent hardening completed in web security, docs, and status visibility
 
 ### Important scope boundary
 
-This project is for **internal SPI flash blackbox** workflows.
+This project is for **internal SPI flash blackbox** workflows (Betaflight and iNav).
 
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.2.0
+
+### iNav Flight Controller Support
+- **First-class iNav support**: LogFalcon now detects and syncs iNav FCs alongside Betaflight — same plug-in, LED, fly-again workflow
+- Variant-aware MSP parsing: handles iNav's DATAFLASH_READ response format (no length/compression header)
+- Automatic compression suppression for non-Betaflight FCs
+- Dynamic directory naming: iNav sessions stored as `fc_INAV_uid-*` (Betaflight remains `fc_BTFL_uid-*`)
+- Skips BLACKBOX_CONFIG query for iNav (deprecated in iNav firmware)
+- Renamed `FCNotBetaflight` → `FCNotSupported` exception (backwards-compatible alias kept)
+- Added 7 new tests covering iNav detection, parsing, and full sync flow (159 → 166 total)
+- Zero breaking changes to existing Betaflight workflows
 
 ## v0.1.3
 

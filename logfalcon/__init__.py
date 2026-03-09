@@ -1,3 +1,3 @@
-"""LogFalcon — Betaflight blackbox companion tool."""
+"""LogFalcon — Betaflight & iNav blackbox companion tool."""
 
-__version__ = '0.1.3'
+__version__ = '0.2.0'

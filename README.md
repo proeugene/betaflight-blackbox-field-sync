@@ -4,7 +4,7 @@
 
 **Clear your FC's blackbox flash in the field. No laptop. No dongles. Keep flying.**
 
-LogFalcon is a Betaflight companion tool — a tiny Raspberry Pi Zero W that copies and clears your flight controller's blackbox data in ~30 seconds, so you never have to stop your session.
+LogFalcon is a Betaflight & iNav companion tool — a tiny Raspberry Pi Zero W that copies and clears your flight controller's blackbox data in ~30 seconds, so you never have to stop your session.
 
 ---
 
@@ -133,7 +133,9 @@ Only three patterns — unmistakable at a glance, even in direct sunlight:
 │  2026-03-01 09:10  2.1 MB  ✓ Erased            │
 │  [Download .bbl]  [Manifest]  [Delete from Pi]  │
 │                                                  │
-│  2026-02-26 16:15  1.8 MB  ✓ Erased            │
+│  fc_INAV_uid-aabb1122                           │
+│  ─────────────────────────────────────────────  │
+│  2026-03-02 10:15  1.5 MB  ✓ Erased            │
 │  [Download .bbl]  [Manifest]  [Delete from Pi]  │
 ├─────────────────────────────────────────────────┤
 │  Pi SD card: 12.3 GB used / 28.7 GB free       │
@@ -142,18 +144,18 @@ Only three patterns — unmistakable at a glance, even in direct sunlight:
 
 ---
 
-## ✅ Betaflight Compatibility
+## ✅ FC Compatibility
 
-LogFalcon is an independent add-on — not affiliated with or endorsed by the Betaflight project.
+LogFalcon is an independent add-on — not affiliated with or endorsed by the Betaflight or iNav projects.
 
 | | |
 |---|---|
-| **Firmware** | Betaflight 4.0+ (requires MSP v2) |
+| **Firmware** | Betaflight 4.0+ · iNav 2.6+ (requires MSP v2) |
 | **Blackbox device** | **SPI Flash only** — the most common setup |
 | **Flash chips** | W25Q128FV, W25Q64FV, M25P16 (covers the vast majority of FCs) |
-| **Not supported** | FC-side SD card blackbox · Betaflight < 4.0 · iNAV · Ardupilot |
+| **Not supported** | FC-side SD card blackbox · Betaflight < 4.0 · Ardupilot |
 
-> **How to check:** In Betaflight Configurator → **Blackbox** tab. If it shows `FLASH` with a size (16M, 64M, 128M), you're good. If it shows `SD CARD` or `NONE`, LogFalcon can't read it.
+> **How to check:** In Betaflight/iNav Configurator → **Blackbox** tab. If it shows `FLASH` with a size (16M, 64M, 128M), you're good. If it shows `SD CARD` or `NONE`, LogFalcon can't read it.
 
 ---
 
@@ -226,13 +228,17 @@ Your FC logs to an SD card, not internal flash. MSP can't read FC-side SD cards.
 
 ```
 /mnt/logfalcon-logs/
-├── fc_BTFL_uid-12ab34cd/            ← one directory per FC (by UID)
+├── fc_BTFL_uid-12ab34cd/            ← Betaflight FC (by UID)
 │   ├── 2026-02-26_143012/
 │   │   ├── raw_flash.bbl            ← open directly in Blackbox Explorer
 │   │   └── manifest.json            ← FC info, file size, SHA-256, erase status
 │   ├── 2026-02-26_161500/
 │   └── 2026-03-01_091000/
-└── fc_BTFL_uid-deadbeef/            ← different FC → different directory
+├── fc_INAV_uid-aabb1122/            ← iNav FC → separate directory
+│   └── 2026-03-02_101500/
+│       ├── raw_flash.bbl
+│       └── manifest.json
+└── fc_BTFL_uid-deadbeef/            ← different Betaflight FC
     └── ...
 ```
 
@@ -291,6 +297,12 @@ echo '{"version":1,"created_utc":"2026-02-26T14:30:12Z","fc":{"variant":"BTFL","
   > /tmp/logfalcon-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/manifest.json
 touch /tmp/logfalcon-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/raw_flash.bbl
 
+# iNav example session
+mkdir -p /tmp/logfalcon-test/fc_INAV_uid-aabb1122/2026-03-02_101500
+echo '{"version":1,"created_utc":"2026-03-02T10:15:00Z","fc":{"variant":"INAV","uid":"aabb112233445566","api_version":"2.6","blackbox_device":3},"file":{"name":"raw_flash.bbl","bytes":4194304,"sha256":"def456"},"erase_attempted":true,"erase_completed":true}' \
+  > /tmp/logfalcon-test/fc_INAV_uid-aabb1122/2026-03-02_101500/manifest.json
+touch /tmp/logfalcon-test/fc_INAV_uid-aabb1122/2026-03-02_101500/raw_flash.bbl
+
 python -c "from logfalcon.web.server import run_server; run_server(storage_path='/tmp/logfalcon-test', port=8080)"
 # Open http://localhost:8080
 ```
@@ -324,7 +336,7 @@ logfalcon/
 The Pi speaks **MSP v1** over USB CDC-ACM. A udev rule detects the FC (STM VID `0x0483`) and fires a one-shot systemd service:
 
 1. Wait 3s for USB to settle
-2. Identify FC — `MSP_FC_VARIANT` (must be `BTFL`) + `MSP_UID`
+2. Identify FC — `MSP_FC_VARIANT` (must be `BTFL` or `INAV`) + `MSP_UID`
 3. Query flash — `MSP_DATAFLASH_SUMMARY`
 4. Check Pi has enough storage
 5. Stream flash in 16 KB pipelined chunks → `.bbl` file
