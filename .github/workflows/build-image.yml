@@ -64,19 +64,45 @@ jobs:
           CONTINUE: 0
           PRESERVE_CONTAINER: 0
 
-      - name: Compress image
+      - name: Shrink and compress image
         run: |
           ls -la pi-gen/pi-gen-repo/deploy/ || true
           cd pi-gen/pi-gen-repo/deploy
+
           IMAGE_FILE=$(ls *.img 2>/dev/null | head -1)
-          if [ -n "$IMAGE_FILE" ]; then
-            xz -9 -T0 "$IMAGE_FILE"
-            echo "IMAGE_NAME=${IMAGE_FILE}.xz" >> $GITHUB_ENV
-            echo "IMAGE_PATH=pi-gen/pi-gen-repo/deploy/${IMAGE_FILE}.xz" >> $GITHUB_ENV
-          else
+          if [ -z "$IMAGE_FILE" ]; then
             echo "::error::No .img file found in deploy directory"
             exit 1
           fi
+
+          # Install PiShrink — removes free space from the filesystem before
+          # compression, typically cuts another 30-50% off the final .xz size.
+          wget -qO /usr/local/bin/pishrink.sh \
+            https://raw.githubusercontent.com/Drewsif/PiShrink/master/pishrink.sh
+          chmod +x /usr/local/bin/pishrink.sh
+
+          RAW_SIZE=$(du -h "$IMAGE_FILE" | cut -f1)
+          echo "Raw image:      $RAW_SIZE  ($IMAGE_FILE)"
+
+          sudo /usr/local/bin/pishrink.sh "$IMAGE_FILE"
+          SHRUNK_SIZE=$(du -h "$IMAGE_FILE" | cut -f1)
+          echo "After PiShrink: $SHRUNK_SIZE  ($IMAGE_FILE)"
+
+          # -9e = preset 9 extreme; -T0 = all CPU threads
+          xz -9e -T0 "$IMAGE_FILE"
+          FINAL_SIZE=$(du -h "${IMAGE_FILE}.xz" | cut -f1)
+          echo "Compressed:     $FINAL_SIZE  (${IMAGE_FILE}.xz)"
+
+          # Write a human-readable summary to the job summary
+          echo "## Image sizes" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage | Size |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Raw .img | $RAW_SIZE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| After PiShrink | $SHRUNK_SIZE |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Final .img.xz | $FINAL_SIZE |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "IMAGE_NAME=${IMAGE_FILE}.xz" >> "$GITHUB_ENV"
+          echo "IMAGE_PATH=pi-gen/pi-gen-repo/deploy/${IMAGE_FILE}.xz" >> "$GITHUB_ENV"
 
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/') != true
