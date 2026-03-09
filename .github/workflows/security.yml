@@ -29,7 +29,13 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run pip-audit
-        run: pip-audit --strict --skip-editable --desc on
+        run: |
+          # Audit only third-party dependencies — our private package is not
+          # on PyPI so we exclude it explicitly and keep --strict for everything else.
+          pip list --format=freeze \
+            | grep -iv "betaflight.blackbox.field.sync" \
+            > /tmp/audit-deps.txt
+          pip-audit --strict --desc -r /tmp/audit-deps.txt
 
   bandit:
     name: Bandit SAST
