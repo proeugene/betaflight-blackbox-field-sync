@@ -77,7 +77,7 @@ That workflow is slow and awkward at the field. This project turns the process i
 - **Optional acceleration:** native C extension in `bbsyncer/_native/_msp_fast.c`
 - **Protocol:** MSP
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
-- **Current version:** `0.1.1`
+- **Current version:** `0.1.2`
 
 ## Major project areas
 
@@ -104,7 +104,7 @@ That workflow is slow and awkward at the field. This project turns the process i
 
 - automated tests passing: **86 tests**
 - lint and formatting checks passing
-- version bumped to **0.1.1**
+- version bumped to **0.1.2**
 - recent hardening completed in web security, docs, and status visibility
 
 ### Important scope boundary
@@ -114,6 +114,21 @@ This project is for **internal SPI flash blackbox** workflows.
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.1.2
+
+### Image build and distribution
+
+- added `03-run-chroot.sh` cleanup stage: purges build-only packages
+  (gcc, python3-dev) after C extension compile, removes nfs-common,
+  triggerhappy, lua5.1, man-db, apt caches, docs, locale data and
+  Python bytecode — reduces raw image size by ~150–250 MB
+- added PiShrink step in CI before xz compression, stripping unused
+  filesystem space (typically 30–50% further reduction)
+- upgraded xz compression from `-9` to `-9e -T0` (extreme preset,
+  all threads) for better ratio
+- CI job summary now reports raw / shrunk / compressed image sizes
+- images published automatically to GitHub Releases on version tags
 
 ## v0.1.1
 
