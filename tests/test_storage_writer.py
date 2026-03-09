@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from bbsyncer.storage.writer import StreamWriter
+from logfalcon.storage.writer import StreamWriter
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 """Tests for Huffman decoder."""
 
-from bbsyncer.msp.huffman import DEFAULT_HUFFMAN_TREE, HUFFMAN_EOF, huffman_decode
+from logfalcon.msp.huffman import DEFAULT_HUFFMAN_TREE, HUFFMAN_EOF, huffman_decode
 
 
 class TestHuffmanDecode:

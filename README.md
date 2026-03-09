@@ -1,8 +1,8 @@
-# Betaflight Blackbox Field Syncer
+# LogFalcon
 
-[![CI](https://github.com/proeugene/betaflight-blackbox-field-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/proeugene/betaflight-blackbox-field-sync/actions/workflows/ci.yml)
+[![CI](https://github.com/proeugene/logfalcon/actions/workflows/ci.yml/badge.svg)](https://github.com/proeugene/logfalcon/actions/workflows/ci.yml)
 
-A **Raspberry Pi Zero W** that lives in your field bag and empties your Betaflight FC's blackbox flash in about 30–40 seconds — automatically, with no laptop and no dongles.
+**LogFalcon** is a Betaflight companion tool — a pre-configured **Raspberry Pi Zero W** appliance that empties your FC's blackbox flash in about 30–40 seconds, in the field, automatically.
 
 Plug your FC into the Pi, wait for the LED, plug the FC back into your quad, and fly again. Repeat as many times as you need throughout the session. All your logs are timestamped and waiting on the Pi's SD card, available over Wi-Fi from any phone when you're ready.
 
@@ -38,7 +38,7 @@ You can repeat this as many times as needed throughout a session. Every sync cre
 3. Plug FC into Pi Zero W (USB OTG)
 4. Watch LED:  fast blink → slow pulse → 3× rapid + solid = DONE
 5. Plug FC back into quad, fly again
-6. Later: connect phone to "BF-Blackbox" Wi-Fi → browser opens automatically
+6. Later: connect phone to "LogFalcon" Wi-Fi → browser opens automatically
 7. Tap Download → open in Blackbox Explorer
 ```
 
@@ -69,13 +69,28 @@ No extra hardware needed for the LED — the Pi's built-in ACT LED is used.
 
 ---
 
-## Quick Start (Recommended)
+## Betaflight Compatibility
 
-1. **Download** the latest `bbsyncer-*.img.xz` from [Releases](https://github.com/proeugene/betaflight-blackbox-field-sync/releases)
+LogFalcon is a **Betaflight add-on / companion tool** — it is not affiliated with or endorsed by the Betaflight project.
+
+| Requirement | Details |
+|-------------|---------|
+| **Betaflight version** | 4.0 or newer (MSP v2 protocol required) |
+| **Blackbox device** | **SPI Flash only** — set `Blackbox Device = SPI Flash` in Configurator |
+| **Supported flash chips** | W25Q128FV (128 Mbit), W25Q64FV (64 Mbit), M25P16 (16 Mbit) — the three chips used on the vast majority of Betaflight FCs |
+| **Not supported** | FC-side SD card blackbox, Betaflight < 4.0, iNAV/Ardupilot |
+| **Pi hardware** | Pi Zero W (primary), Pi Zero 2 W (recommended — faster boot), Pi 3A+ (works, overkill) |
+| **USB connection** | FC → Pi via MSP over USB serial (OTG port); no Betaflight Configurator needed |
+
+> **How to check your FC's flash chip:** In Betaflight Configurator, go to **Blackbox** tab. If the device shows `FLASH` with a size (e.g. `16M`, `64M`, `128M`), you have a compatible SPI flash. If it shows `SD CARD` or `NONE`, LogFalcon cannot read it via MSP.
+
+
+
+1. **Download** the latest `logfalcon-*.img.xz` from [Releases](https://github.com/proeugene/logfalcon/releases)
 2. **Burn** it to a microSD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) or [Balena Etcher](https://etcher.balena.io/)
-3. **(Optional, recommended) Customize** — before ejecting the SD card, open the `boot` partition and edit `bbsyncer-config.txt`:
+3. **(Optional, recommended) Customize** — before ejecting the SD card, open the `boot` partition and edit `logfalcon-config.txt`:
    ```ini
-   SSID=BF-Blackbox
+   SSID=LogFalcon
    PASSWORD=fpvpilot
    ```
 4. **Insert** the SD card into your Pi Zero W and power on
@@ -92,17 +107,17 @@ No extra hardware needed for the LED — the Pi's built-in ACT LED is used.
 If you prefer to install on an existing Raspberry Pi OS setup (or want to contribute), flash **Raspberry Pi OS Lite (64-bit, bookworm)** to the SD card, SSH in, and run:
 
 ```bash
-git clone https://github.com/proeugene/betaflight-blackbox-field-sync
-cd betaflight-blackbox-field-sync
-sudo bash install.sh --ssid "BF-Blackbox" --password "your-password"
+git clone https://github.com/proeugene/logfalcon
+cd logfalcon
+sudo bash install.sh --ssid "LogFalcon" --password "your-password"
 ```
 
 The install script handles everything:
 
-- Python package installed to `/opt/bbsyncer/`
+- Python package installed to `/opt/logfalcon/`
 - Wi-Fi hotspot configured (hostapd + dnsmasq)
 - Captive portal so phones auto-open the web UI on connect
-- mDNS hostname `blackboxdata.local` (avahi)
+- mDNS hostname `logfalcon.local` (avahi)
 - systemd units: one-shot sync service + always-on web server
 - udev rule to trigger sync automatically when an FC is plugged in
 
@@ -113,9 +128,9 @@ If you do **not** pass `--password`, the install script generates a unique 12-ch
 ## Retrieving Your Logs
 
 1. Power on the Pi Zero W
-2. On your phone or laptop: connect to Wi-Fi **`BF-Blackbox`** (default image password: `fpvpilot`)
+2. On your phone or laptop: connect to Wi-Fi **`LogFalcon`** (default image password: `fpvpilot`)
 3. **Your phone automatically pops up the blackbox page** — same as airport Wi-Fi captive portals
-   - If that gets dismissed: open any browser and go to `http://blackboxdata.local` or `http://192.168.4.1`
+   - If that gets dismissed: open any browser and go to `http://logfalcon.local` or `http://192.168.4.1`
    - If captive portal detection does not trigger: this is normal on some phones, tablets, VPN setups, and laptops. Open the URL manually.
 4. You'll see all your sessions listed, grouped by FC
 5. Tap **Download .bbl** — opens in [Betaflight Blackbox Explorer](https://github.com/betaflight/blackbox-log-viewer) on desktop, or the [Blackbox Explorer app](https://apps.apple.com/app/betaflight-blackbox-explorer) on iOS/Android
@@ -126,14 +141,14 @@ The web UI also shows Pi SD card free space, lets you delete old sessions to rec
 
 Open one of these manually in any browser:
 
-- `http://blackboxdata.local`
+- `http://logfalcon.local`
 - `http://192.168.4.1`
 
-If `blackboxdata.local` does not work, use `192.168.4.1`.
+If `logfalcon.local` does not work, use `192.168.4.1`.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Betaflight Blackbox Syncer         ⚙    [Idle]  │
+│  LogFalcon         ⚙    [Idle]  │
 ├─────────────────────────────────────────────────┤
 │  fc_BTFL_uid-12ab34cd                           │
 │  ─────────────────────────────────────────────  │
@@ -169,7 +184,7 @@ The Pi's built-in green LED tells you exactly what's happening.
 Logs accumulate on the Pi's SD card and are kept unless storage pressure forces cleanup. If the Pi is too full to safely copy a new log while preserving the configured reserve space, the syncer can automatically delete the **oldest** stored sessions first. The FC's flash is still erased only after the new copy is verified.
 
 ```
-/mnt/bbsyncer-logs/
+/mnt/logfalcon-logs/
 ├── fc_BTFL_uid-12ab34cd/            ← one directory per FC, identified by UID
 │   ├── 2026-02-26_143012/
 │   │   ├── raw_flash.bbl            ← raw binary, open directly in blackbox-log-viewer
@@ -195,18 +210,18 @@ Each `manifest.json` looks like:
 
 ## Configuration
 
-The config file lives at `/etc/bbsyncer/bbsyncer.toml` after install. The defaults work out of the box; here are the settings you're most likely to change:
+The config file lives at `/etc/logfalcon/logfalcon.toml` after install. The defaults work out of the box; here are the settings you're most likely to change:
 
 ```toml
 # Set to false to copy without erasing (useful for testing)
 erase_after_sync = true
 
 # Change the hotspot name and password
-hotspot_ssid = "BF-Blackbox"
+hotspot_ssid = "LogFalcon"
 hotspot_password = "fpvpilot"
 
 # Where logs are stored on the Pi
-storage_path = "/mnt/bbsyncer-logs"
+storage_path = "/mnt/logfalcon-logs"
 
 # How much free space to always keep on the SD card
 min_free_space_mb = 200
@@ -223,13 +238,13 @@ storage_pressure_cleanup = true
 
 ```bash
 # View the sync log for the most recent plug-in event:
-journalctl -u "bbsyncer@ttyACM0" -n 50
+journalctl -u "logfalcon@ttyACM0" -n 50
 ```
 
 **Web UI not loading**
 
 ```bash
-journalctl -u bbsyncer-web -f
+journalctl -u logfalcon-web -f
 ```
 
 **FC not detected (no LED response)**
@@ -253,7 +268,7 @@ If it takes much longer than expected:
 
 - try a shorter OTG cable
 - make sure the FC is powered cleanly over USB
-- check `journalctl -u "bbsyncer@ttyACM0" -n 50` for repeated read errors
+- check `journalctl -u "logfalcon@ttyACM0" -n 50` for repeated read errors
 
 **"FC uses SD card" error**
 
@@ -273,19 +288,19 @@ This returns the current sync state, uptime, session count, disk usage, and whet
 
 ```bash
 # Sync (auto-detect port):
-python -m bbsyncer
+python -m logfalcon
 
 # Sync a specific port:
-python -m bbsyncer --port /dev/ttyACM0
+python -m logfalcon --port /dev/ttyACM0
 
 # Dry run — copy the flash but don't erase it:
-python -m bbsyncer --port /dev/ttyACM0 --dry-run
+python -m logfalcon --port /dev/ttyACM0 --dry-run
 
 # Start the web server only:
-python -m bbsyncer --web
+python -m logfalcon --web
 
 # Verbose logging:
-python -m bbsyncer --port /dev/ttyACM0 --verbose
+python -m logfalcon --port /dev/ttyACM0 --verbose
 ```
 
 ---
@@ -294,8 +309,8 @@ python -m bbsyncer --port /dev/ttyACM0 --verbose
 
 ```bash
 # Clone and set up:
-git clone https://github.com/proeugene/betaflight-blackbox-field-sync
-cd betaflight-blackbox-field-sync
+git clone https://github.com/proeugene/logfalcon
+cd logfalcon
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"   # also builds the optional C extension
 
@@ -303,17 +318,17 @@ pip install -e ".[dev]"   # also builds the optional C extension
 pytest
 
 # Run with coverage:
-pytest --cov=bbsyncer --cov-report=term-missing
+pytest --cov=logfalcon --cov-report=term-missing
 
 # Linting:
 ruff check
 ruff format --check
 
 # Security scanning:
-bandit -r bbsyncer/ -c pyproject.toml
+bandit -r logfalcon/ -c pyproject.toml
 
 # Full CI check locally:
-ruff check && ruff format --check && pytest --cov=bbsyncer
+ruff check && ruff format --check && pytest --cov=logfalcon
 ```
 
 The test suite runs entirely without hardware — the orchestrator tests use mocked MSP clients.
@@ -324,22 +339,22 @@ The web server uses only Python stdlib (no Flask or other runtime dependencies),
 
 ```bash
 # Create a fake session
-mkdir -p /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012
-cat > /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/manifest.json <<'EOF'
+mkdir -p /tmp/logfalcon-test/fc_BTFL_uid-deadbeef/2026-02-26_143012
+cat > /tmp/logfalcon-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/manifest.json <<'EOF'
 {"version":1,"created_utc":"2026-02-26T14:30:12Z","fc":{"variant":"BTFL","uid":"deadbeef12345678","api_version":"4.3","blackbox_device":3},"file":{"name":"raw_flash.bbl","bytes":10485760,"sha256":"abc123def456abc123def456abc123de"},"erase_attempted":true,"erase_completed":true}
 EOF
-touch /tmp/bbsyncer-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/raw_flash.bbl
+touch /tmp/logfalcon-test/fc_BTFL_uid-deadbeef/2026-02-26_143012/raw_flash.bbl
 
 # Start the server on a non-privileged port
-python -c "from bbsyncer.web.server import run_server; run_server(storage_path='/tmp/bbsyncer-test', port=8080)"
+python -c "from logfalcon.web.server import run_server; run_server(storage_path='/tmp/logfalcon-test', port=8080)"
 # Open http://localhost:8080
 ```
 
 Or with Docker:
 
 ```bash
-docker build -t bbsyncer-web .
-docker run --rm -p 8080:8080 -v /tmp/bbsyncer-test:/data bbsyncer-web
+docker build -t logfalcon-web .
+docker run --rm -p 8080:8080 -v /tmp/logfalcon-test:/data logfalcon-web
 # Open http://localhost:8080
 ```
 
@@ -375,14 +390,14 @@ The sync service runs a 10-step state machine:
 
 The FC's flash is **never erased unless the SHA-256 verification passes**.
 
-MSP framing, CRC8-DVB-S2, and the Huffman decompressor are ported directly from the [Betaflight Configurator](https://github.com/betaflight/betaflight-configurator) JavaScript source. Performance-critical CRC, frame decoding, and Huffman decompression are accelerated by an optional C extension (`bbsyncer/_native/_msp_fast.c`), with transparent fallback to pure Python.
+MSP framing, CRC8-DVB-S2, and the Huffman decompressor are ported directly from the [Betaflight Configurator](https://github.com/betaflight/betaflight-configurator) JavaScript source. Performance-critical CRC, frame decoding, and Huffman decompression are accelerated by an optional C extension (`logfalcon/_native/_msp_fast.c`), with transparent fallback to pure Python.
 
 ---
 
 ## Architecture
 
 ```
-bbsyncer/
+logfalcon/
 ├── msp/         MSP protocol: framing, CRC, Huffman, client
 ├── fc/          Flight controller detection and handshake
 ├── sync/        10-step sync orchestrator (main workflow)

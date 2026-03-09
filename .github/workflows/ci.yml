@@ -24,10 +24,10 @@ jobs:
         run: pip install ruff
 
       - name: Ruff check
-        run: ruff check bbsyncer/ tests/
+        run: ruff check logfalcon/ tests/
 
       - name: Ruff format check
-        run: ruff format --check bbsyncer/ tests/
+        run: ruff format --check logfalcon/ tests/
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -49,7 +49,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest --cov=bbsyncer --cov-report=xml --cov-report=term-missing
+        run: pytest --cov=logfalcon --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage
         if: matrix.python-version == '3.12'
@@ -67,4 +67,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t bbsyncer-web .
+        run: docker build -t logfalcon-web .

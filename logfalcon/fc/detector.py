@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from bbsyncer.msp.client import MSPClient, MSPError
-from bbsyncer.msp.constants import (
+from logfalcon.msp.client import MSPClient, MSPError
+from logfalcon.msp.constants import (
     BLACKBOX_DEVICE_NONE,
     BLACKBOX_DEVICE_SDCARD,
     BTFL_VARIANT,

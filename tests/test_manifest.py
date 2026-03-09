@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from bbsyncer.storage.manifest import cleanup_oldest_sessions
+from logfalcon.storage.manifest import cleanup_oldest_sessions
 
 
 def _create_session(storage, fc_name: str, session_name: str) -> None:

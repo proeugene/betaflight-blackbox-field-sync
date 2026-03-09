@@ -4,7 +4,7 @@
 # The C extension (_msp_fast.so) is already compiled at this point so build
 # tools are safe to remove.
 
-echo "=== [bbsyncer] Pre-cleanup disk usage ==="
+echo "=== [logfalcon] Pre-cleanup disk usage ==="
 df -h /
 
 # ---- 1. Remove build-only packages ----------------------------------------
@@ -54,5 +54,5 @@ rm -rf /root/.cache/pip /home/*/.cache/pip 2>/dev/null || true
 # ---- 7. Temp / history ------------------------------------------------------
 rm -rf /tmp/* /var/tmp/* /root/.bash_history 2>/dev/null || true
 
-echo "=== [bbsyncer] Post-cleanup disk usage ==="
+echo "=== [logfalcon] Post-cleanup disk usage ==="
 df -h /

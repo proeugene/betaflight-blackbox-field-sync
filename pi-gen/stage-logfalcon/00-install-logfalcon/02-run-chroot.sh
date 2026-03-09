@@ -25,7 +25,7 @@ EOF
     systemctl enable systemd-networkd 2>/dev/null || true
 fi
 
-# hostapd config (defaults — overridden by firstboot from bbsyncer-config.txt)
+# hostapd config (defaults — overridden by firstboot from logfalcon-config.txt)
 cat > /etc/hostapd/hostapd.conf <<EOF
 interface=wlan0
 driver=nl80211

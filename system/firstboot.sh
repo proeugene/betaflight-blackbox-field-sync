@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Betaflight Blackbox Syncer — Boot-time config applicator
-# Reads /boot/firmware/bbsyncer-config.txt and updates hostapd + app config.
+# LogFalcon — Boot-time config applicator
+# Reads /boot/firmware/logfalcon-config.txt and updates hostapd + app config.
 # Runs on every boot so users can edit config.txt and reboot to apply.
 
 set -euo pipefail
 
-CONFIG_FILE="/boot/firmware/bbsyncer-config.txt"
+CONFIG_FILE="/boot/firmware/logfalcon-config.txt"
 HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
-BBSYNCER_CONF="/etc/bbsyncer/bbsyncer.toml"
-TAG="bbsyncer-firstboot"
+LOGFALCON_CONF="/etc/logfalcon/logfalcon.toml"
+TAG="logfalcon-firstboot"
 
 log() { logger -t "$TAG" "$*"; }
 escape_sed() { printf '%s' "$1" | sed -e 's/[\/&]/\\&/g'; }
@@ -75,13 +75,13 @@ else
   log "WARNING: $HOSTAPD_CONF not found — skipped hostapd update."
 fi
 
-# Update bbsyncer.toml
-if [[ -f "$BBSYNCER_CONF" ]]; then
-  sed -i "s/^hotspot_ssid = .*/hotspot_ssid = \"$SSID_ESCAPED\"/" "$BBSYNCER_CONF"
-  sed -i "s/^hotspot_password = .*/hotspot_password = \"$PASSWORD_ESCAPED\"/" "$BBSYNCER_CONF"
-  log "Updated $BBSYNCER_CONF"
+# Update logfalcon.toml
+if [[ -f "$LOGFALCON_CONF" ]]; then
+  sed -i "s/^hotspot_ssid = .*/hotspot_ssid = \"$SSID_ESCAPED\"/" "$LOGFALCON_CONF"
+  sed -i "s/^hotspot_password = .*/hotspot_password = \"$PASSWORD_ESCAPED\"/" "$LOGFALCON_CONF"
+  log "Updated $LOGFALCON_CONF"
 else
-  log "WARNING: $BBSYNCER_CONF not found — skipped bbsyncer update."
+  log "WARNING: $LOGFALCON_CONF not found — skipped bbsyncer update."
 fi
 
 log "Boot config applied successfully."

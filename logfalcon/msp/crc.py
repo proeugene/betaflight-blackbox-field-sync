@@ -41,7 +41,7 @@ def _py_crc8_dvb_s2(data: bytes, initial: int = 0) -> int:
 
 
 try:
-    from bbsyncer._native._msp_fast import crc8_dvb_s2, crc8_xor
+    from logfalcon._native._msp_fast import crc8_dvb_s2, crc8_xor
 except ImportError:
     crc8_xor = _py_crc8_xor
     crc8_dvb_s2 = _py_crc8_dvb_s2

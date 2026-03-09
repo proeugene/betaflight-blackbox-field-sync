@@ -1,10 +1,10 @@
-# Betaflight Blackbox Field Syncer - Project Status
+# LogFalcon - Project Status
 
 ## What this project is
 
 FPV pilots who use Betaflight blackbox logging on internal SPI flash hit a recurring wall: the flash is small, fills up fast, and when it's full, logging stops mid-session. Before this project, the only ways to clear it were a laptop with Betaflight Configurator, or an expensive third-party USB dongle — both require extra hardware and often mean leaving the field.
 
-Betaflight Blackbox Field Syncer is a pocket-sized Raspberry Pi Zero W / Zero 2 W appliance that removes that friction entirely. Plug the FC in, wait for the LED (~30–40 s), unplug, fly again. Repeat as many times as needed. All synced logs are timestamped, organised by FC, and available over the Pi's Wi-Fi hotspot from any phone when you're done flying.
+LogFalcon is a pocket-sized Raspberry Pi Zero W / Zero 2 W appliance that removes that friction entirely. Plug the FC in, wait for the LED (~30–40 s), unplug, fly again. Repeat as many times as needed. All synced logs are timestamped, organised by FC, and available over the Pi's Wi-Fi hotspot from any phone when you're done flying.
 
 Internally it:
 
@@ -72,19 +72,19 @@ Both options require leaving the field or spending money on extra hardware. This
 
 - **Language:** Python 3.11+
 - **Runtime dependencies:** `pyserial`, conditional `RPi.GPIO`
-- **Optional acceleration:** native C extension in `bbsyncer/_native/_msp_fast.c`
+- **Optional acceleration:** native C extension in `logfalcon/_native/_msp_fast.c`
 - **Protocol:** MSP
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
 - **Current version:** `0.1.2`
 
 ## Major project areas
 
-- `bbsyncer/msp/` - MSP framing, CRC, client, constants, Huffman
-- `bbsyncer/fc/` - FC detection and compatibility checks
-- `bbsyncer/sync/` - copy / verify / erase orchestration
-- `bbsyncer/storage/` - session layout and manifest handling
-- `bbsyncer/web/` - browser UI, downloads, settings, health
-- `bbsyncer/led/` - LED signaling
+- `logfalcon/msp/` - MSP framing, CRC, client, constants, Huffman
+- `logfalcon/fc/` - FC detection and compatibility checks
+- `logfalcon/sync/` - copy / verify / erase orchestration
+- `logfalcon/storage/` - session layout and manifest handling
+- `logfalcon/web/` - browser UI, downloads, settings, health
+- `logfalcon/led/` - LED signaling
 - `config/`, `system/`, `boot/` - deploy-time integration for Pi images and installs
 - `tests/` - automated test coverage
 

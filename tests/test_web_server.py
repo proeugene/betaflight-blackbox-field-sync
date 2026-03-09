@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 import pytest
 
-from bbsyncer.config import Config
-from bbsyncer.web import server as web_server_module
-from bbsyncer.web.server import (
+from logfalcon.config import Config
+from logfalcon.web import server as web_server_module
+from logfalcon.web.server import (
     _CSRF_TOKEN,
     _HTTPError,
     _make_handler,
@@ -73,7 +73,7 @@ class TestResolveSessionPath:
 class TestRenderIndex:
     def test_renders_html(self, storage):
         html = _render_index(storage)
-        assert 'Betaflight Blackbox Syncer' in html
+        assert 'LogFalcon' in html
         assert 'fc_BTFL_uid-deadbeef' in html
         assert 'Download .bbl' in html
 
@@ -94,9 +94,9 @@ class TestRenderIndex:
         cfg = Config()
         cfg.min_free_space_mb = 200
         with (
-            patch('bbsyncer.web.server.load_config', return_value=cfg),
-            patch('bbsyncer.web.server.used_and_free_gb', return_value=(1.0, 0.1)),
-            patch('bbsyncer.web.server.free_mb', return_value=100.0),
+            patch('logfalcon.web.server.load_config', return_value=cfg),
+            patch('logfalcon.web.server.used_and_free_gb', return_value=(1.0, 0.1)),
+            patch('logfalcon.web.server.free_mb', return_value=100.0),
         ):
             html = _render_index(storage)
         assert 'Oldest sessions may be removed automatically' in html
@@ -153,7 +153,7 @@ def _make_request_handler(storage_path, method, path, body=b'', headers=None):
 class TestSettingsPage:
     def test_settings_page_renders(self, tmp_path):
         with patch(
-            'bbsyncer.web.server._read_hostapd_config',
+            'logfalcon.web.server._read_hostapd_config',
             return_value={'ssid': 'TestNet', 'wpa_passphrase': 'secret123'},
         ):
             response = _make_request_handler(str(tmp_path), 'GET', '/settings')
@@ -165,7 +165,7 @@ class TestSettingsPage:
 
     def test_settings_post_validates_ssid(self, tmp_path):
         body = f'csrf_token={_CSRF_TOKEN}&ssid=&password=validpass1'.encode()
-        with patch('bbsyncer.web.server._read_hostapd_config', return_value={}):
+        with patch('logfalcon.web.server._read_hostapd_config', return_value={}):
             response = _make_request_handler(
                 str(tmp_path),
                 'POST',
@@ -178,7 +178,7 @@ class TestSettingsPage:
 
     def test_settings_post_validates_password(self, tmp_path):
         body = f'csrf_token={_CSRF_TOKEN}&ssid=ValidSSID&password=short'.encode()
-        with patch('bbsyncer.web.server._read_hostapd_config', return_value={}):
+        with patch('logfalcon.web.server._read_hostapd_config', return_value={}):
             response = _make_request_handler(
                 str(tmp_path),
                 'POST',
@@ -191,7 +191,7 @@ class TestSettingsPage:
 
     def test_settings_post_requires_csrf_token(self, tmp_path):
         body = b'ssid=ValidSSID&password=securepass123'
-        with patch('bbsyncer.web.server._read_hostapd_config', return_value={}):
+        with patch('logfalcon.web.server._read_hostapd_config', return_value={}):
             response = _make_request_handler(
                 str(tmp_path),
                 'POST',
@@ -205,12 +205,12 @@ class TestSettingsPage:
     def test_settings_post_success(self, tmp_path):
         body = f'csrf_token={_CSRF_TOKEN}&ssid=NewNetwork&password=securepass123'.encode()
         with (
-            patch('bbsyncer.web.server._read_hostapd_config', return_value={}),
-            patch('bbsyncer.web.server._write_hostapd_config', return_value=True) as mock_hostapd,
-            patch('bbsyncer.web.server._write_bbsyncer_config', return_value=True) as mock_app,
-            patch('bbsyncer.web.server._write_boot_config', return_value=True) as mock_boot,
+            patch('logfalcon.web.server._read_hostapd_config', return_value={}),
+            patch('logfalcon.web.server._write_hostapd_config', return_value=True) as mock_hostapd,
+            patch('logfalcon.web.server._write_logfalcon_config', return_value=True) as mock_app,
+            patch('logfalcon.web.server._write_boot_config', return_value=True) as mock_boot,
             patch(
-                'bbsyncer.web.server.subprocess.run',
+                'logfalcon.web.server.subprocess.run',
                 return_value=type('Result', (), {'returncode': 0})(),
             ) as mock_run,
         ):
@@ -240,12 +240,12 @@ class TestSettingsPage:
         cfg.min_free_space_mb = 200
         with (
             patch(
-                'bbsyncer.web.server._read_hostapd_config',
+                'logfalcon.web.server._read_hostapd_config',
                 return_value={'ssid': 'TestNet', 'wpa_passphrase': 'secret123'},
             ),
-            patch('bbsyncer.web.server.load_config', return_value=cfg),
-            patch('bbsyncer.web.server.used_and_free_gb', return_value=(1.0, 0.1)),
-            patch('bbsyncer.web.server.free_mb', return_value=100.0),
+            patch('logfalcon.web.server.load_config', return_value=cfg),
+            patch('logfalcon.web.server.used_and_free_gb', return_value=(1.0, 0.1)),
+            patch('logfalcon.web.server.free_mb', return_value=100.0),
         ):
             response = _make_request_handler(str(storage), 'GET', '/health')
         assert '200' in response.split('\r\n')[0]

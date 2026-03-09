@@ -1,6 +1,6 @@
-IMG_NAME=bbsyncer
+IMG_NAME=logfalcon
 RELEASE=bookworm
-TARGET_HOSTNAME=blackboxdata
+TARGET_HOSTNAME=logfalcon
 KEYBOARD_KEYMAP=us
 KEYBOARD_LAYOUT="English (US)"
 TIMEZONE_DEFAULT=UTC
@@ -11,4 +11,4 @@ ENABLE_SSH=1
 DEPLOY_COMPRESSION=none
 
 # Skip stages 3-5 (desktop, etc.) — we only want Lite
-STAGE_LIST="stage0 stage1 stage2 stage-bbsyncer"
+STAGE_LIST="stage0 stage1 stage2 stage-logfalcon"

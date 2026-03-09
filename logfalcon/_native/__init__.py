@@ -11,7 +11,7 @@ own imports from _msp_fast with try/except fallback.
 from __future__ import annotations
 
 try:
-    import bbsyncer._native._msp_fast  # noqa: F401
+    import logfalcon._native._msp_fast  # noqa: F401
 
     _NATIVE_AVAILABLE = True
 except ImportError:

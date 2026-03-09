@@ -9,8 +9,8 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-from bbsyncer.fc.detector import FCInfo
-from bbsyncer.util.disk_space import free_bytes
+from logfalcon.fc.detector import FCInfo
+from logfalcon.util.disk_space import free_bytes
 
 log = logging.getLogger(__name__)
 

@@ -168,6 +168,6 @@ def _py_huffman_decode(
 
 
 try:
-    from bbsyncer._native._msp_fast import huffman_decode
+    from logfalcon._native._msp_fast import huffman_decode
 except ImportError:
     huffman_decode = _py_huffman_decode

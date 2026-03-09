@@ -1,10 +1,10 @@
 # systemd unit for bbsyncer web server (always running)
-# Install to: /etc/systemd/system/bbsyncer-web.service
-# Enable: sudo systemctl enable --now bbsyncer-web.service
+# Install to: /etc/systemd/system/logfalcon-web.service
+# Enable: sudo systemctl enable --now logfalcon-web.service
 
 [Unit]
-Description=Betaflight Blackbox Syncer Web Server
-Documentation=https://github.com/proeugene/betaflight-blackbox-field-sync
+Description=LogFalcon Web Server
+Documentation=https://github.com/proeugene/logfalcon
 After=network.target hostapd.service
 
 [Service]
@@ -13,11 +13,11 @@ User=bbsyncer
 Group=bbsyncer
 
 WorkingDirectory=/opt/bbsyncer
-ExecStart=/opt/bbsyncer/venv/bin/python -m bbsyncer --web
+ExecStart=/opt/logfalcon/venv/bin/python -m logfalcon --web
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=bbsyncer-web
+SyslogIdentifier=logfalcon-web
 
 Restart=always
 RestartSec=5

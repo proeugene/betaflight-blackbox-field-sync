@@ -38,14 +38,14 @@ jobs:
         run: |
           # Copy our config and custom stage
           cp pi-gen/config pi-gen/pi-gen-repo/config
-          rm -rf pi-gen/pi-gen-repo/stage-bbsyncer
-          cp -r pi-gen/stage-bbsyncer pi-gen/pi-gen-repo/stage-bbsyncer
+          rm -rf pi-gen/pi-gen-repo/stage-logfalcon
+          cp -r pi-gen/stage-logfalcon pi-gen/pi-gen-repo/stage-logfalcon
 
           # Copy project source into pi-gen so scripts can access it
-          rm -rf pi-gen/pi-gen-repo/bbsyncer-src
+          rm -rf pi-gen/pi-gen-repo/logfalcon-src
           rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
               --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
-              ./ pi-gen/pi-gen-repo/bbsyncer-src/
+              ./ pi-gen/pi-gen-repo/logfalcon-src/
 
           # Skip desktop stages (safety net — STAGE_LIST already limits stages)
           touch pi-gen/pi-gen-repo/stage3/SKIP pi-gen/pi-gen-repo/stage3/SKIP_IMAGES
@@ -108,7 +108,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') != true
         uses: actions/upload-artifact@v4
         with:
-          name: bbsyncer-image
+          name: logfalcon-image
           path: ${{ env.IMAGE_PATH }}
           retention-days: 7
 

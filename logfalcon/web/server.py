@@ -32,10 +32,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
-from bbsyncer.config import load_config
-from bbsyncer.storage.manifest import list_sessions
-from bbsyncer.sync.orchestrator import get_status
-from bbsyncer.util.disk_space import free_mb, used_and_free_gb
+from logfalcon.config import load_config
+from logfalcon.storage.manifest import list_sessions
+from logfalcon.sync.orchestrator import get_status
+from logfalcon.util.disk_space import free_mb, used_and_free_gb
 
 log = logging.getLogger(__name__)
 
@@ -70,16 +70,16 @@ _CAPTIVE_PATHS = frozenset(
 _CAPTIVE_HTML = (
     '<!DOCTYPE html><html><head>'
     '<meta http-equiv="refresh" content="0; url=/">'
-    '<title>Betaflight Blackbox Syncer</title>'
+    '<title>LogFalcon</title>'
     '</head><body>'
-    '<p>Redirecting to <a href="/">Blackbox Syncer</a>...</p>'
+    '<p>Redirecting to <a href="/">LogFalcon</a>...</p>'
     '</body></html>'
 )
 
 
 _HOSTAPD_CONF = '/etc/hostapd/hostapd.conf'
-_BBSYNCER_TOML = '/etc/bbsyncer/bbsyncer.toml'
-_BOOT_CONFIG = '/boot/firmware/bbsyncer-config.txt'
+_LOGFALCON_TOML = '/etc/logfalcon/logfalcon.toml'
+_BOOT_CONFIG = '/boot/firmware/logfalcon-config.txt'
 
 
 def _read_hostapd_config() -> dict[str, str]:
@@ -133,9 +133,9 @@ def _write_hostapd_config(ssid: str, password: str) -> bool:
     )
 
 
-def _write_bbsyncer_config(ssid: str, password: str) -> bool:
+def _write_logfalcon_config(ssid: str, password: str) -> bool:
     return _rewrite_prefixed_lines(
-        _BBSYNCER_TOML,
+        _LOGFALCON_TOML,
         {
             'hotspot_ssid =': f'hotspot_ssid = {json.dumps(ssid)}',
             'hotspot_password =': f'hotspot_password = {json.dumps(password)}',
@@ -311,7 +311,7 @@ def _render_index(storage: Path) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Betaflight Blackbox Syncer</title>
+  <title>LogFalcon</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{
@@ -484,7 +484,7 @@ def _render_index(storage: Path) -> str:
 <body>
 
 <header>
-  <h1>Betaflight Blackbox Syncer</h1>
+  <h1>LogFalcon</h1>
   <a href="/settings" style="color:#a0a0b8; text-decoration:none; font-size:1.2rem;" title="Settings">&#9881;</a>
   <span id="status-badge">Idle</span>
 </header>
@@ -663,7 +663,7 @@ def _render_settings(message: str = '', error: bool = False) -> str:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings — Betaflight Blackbox Syncer</title>
+  <title>Settings — LogFalcon</title>
   <style>{_SETTINGS_CSS}</style>
 </head>
 <body>
@@ -806,7 +806,7 @@ def _make_handler(storage_path: str) -> type:
             if not all(
                 (
                     _write_hostapd_config(ssid, password),
-                    _write_bbsyncer_config(ssid, password),
+                    _write_logfalcon_config(ssid, password),
                     _write_boot_config(ssid, password),
                 )
             ):
@@ -994,7 +994,7 @@ def _make_handler(storage_path: str) -> type:
     return _Handler
 
 
-def run_server(storage_path: str = '/mnt/bbsyncer-logs', port: int = 80) -> None:
+def run_server(storage_path: str = '/mnt/logfalcon-logs', port: int = 80) -> None:
     """Start the HTTP server."""
     handler = _make_handler(storage_path)
     server = _ThreadedHTTPServer(('0.0.0.0', port), handler)

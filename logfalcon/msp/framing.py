@@ -15,8 +15,8 @@ from dataclasses import dataclass, field
 from .crc import crc8_dvb_s2, crc8_xor
 
 try:
-    from bbsyncer._native._msp_fast import decode as _native_decode
-    from bbsyncer._native._msp_fast import decoder_new as _native_decoder_new
+    from logfalcon._native._msp_fast import decode as _native_decode
+    from logfalcon._native._msp_fast import decoder_new as _native_decoder_new
 
     _USE_NATIVE_DECODER = True
 except ImportError:

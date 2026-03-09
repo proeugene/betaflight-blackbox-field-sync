@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Betaflight Blackbox Field Syncer — Full Install Script
+# LogFalcon — Full Install Script
 # Run as root on a fresh Raspberry Pi OS Lite (bookworm, 64-bit)
 #
 # Usage:
@@ -8,9 +8,9 @@
 # What this does:
 #   1. Install system packages (hostapd, dnsmasq, avahi, Python)
 #   2. Create bbsyncer system user
-#   3. Install Python package into /opt/bbsyncer/venv
+#   3. Install Python package into /opt/logfalcon/venv
 #   4. Set up Wi-Fi hotspot (hostapd + dnsmasq + static IP)
-#   5. Mount point for log storage (/mnt/bbsyncer-logs)
+#   5. Mount point for log storage (/mnt/logfalcon-logs)
 #   6. Install systemd units (sync service + web server)
 #   7. Install udev rule
 #   8. Enable and start services
@@ -19,7 +19,7 @@ set -euo pipefail
 
 ### --- Defaults --- ###
 INSTALL_DIR="/opt/bbsyncer"
-LOG_DIR="/mnt/bbsyncer-logs"
+LOG_DIR="/mnt/logfalcon-logs"
 CONFIG_DIR="/etc/bbsyncer"
 SSID="BF-Blackbox"
 WIFI_PASSWORD="fpvpilot"
@@ -41,7 +41,7 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "=== Betaflight Blackbox Field Syncer Install ==="
+echo "=== LogFalcon Install ==="
 echo "Install dir:   $INSTALL_DIR"
 echo "Log dir:       $LOG_DIR"
 echo "Hotspot SSID:  $SSID"
@@ -92,10 +92,10 @@ python3 -m venv "$INSTALL_DIR/venv"
 
 # Config file
 mkdir -p "$CONFIG_DIR"
-if [[ ! -f "$CONFIG_DIR/bbsyncer.toml" ]]; then
-  cp "$SCRIPT_DIR/config/bbsyncer.toml" "$CONFIG_DIR/bbsyncer.toml"
-  sed -i "s/hotspot_ssid = .*/hotspot_ssid = \"$SSID\"/" "$CONFIG_DIR/bbsyncer.toml"
-  sed -i "s/hotspot_password = .*/hotspot_password = \"$WIFI_PASSWORD\"/" "$CONFIG_DIR/bbsyncer.toml"
+if [[ ! -f "$CONFIG_DIR/logfalcon.toml" ]]; then
+  cp "$SCRIPT_DIR/config/logfalcon.toml" "$CONFIG_DIR/logfalcon.toml"
+  sed -i "s/hotspot_ssid = .*/hotspot_ssid = \"$SSID\"/" "$CONFIG_DIR/logfalcon.toml"
+  sed -i "s/hotspot_password = .*/hotspot_password = \"$WIFI_PASSWORD\"/" "$CONFIG_DIR/logfalcon.toml"
 fi
 chown -R bbsyncer:bbsyncer "$INSTALL_DIR" "$CONFIG_DIR"
 
@@ -106,7 +106,7 @@ chown bbsyncer:bbsyncer "$LOG_DIR"
 chmod 755 "$LOG_DIR"
 
 # Optional: if a dedicated partition is available, mount it
-# Add to /etc/fstab:  /dev/sdXn  /mnt/bbsyncer-logs  ext4  defaults,noatime  0  2
+# Add to /etc/fstab:  /dev/sdXn  /mnt/logfalcon-logs  ext4  defaults,noatime  0  2
 
 ### --- 5. Wi-Fi hotspot --- ###
 echo "[5/8] Configuring Wi-Fi hotspot..."
@@ -166,26 +166,26 @@ ip link set wlan0 up 2>/dev/null || true
 
 ### --- 6. systemd units --- ###
 echo "[6/8] Installing systemd units..."
-cp "$SCRIPT_DIR/system/bbsyncer@.service" /etc/systemd/system/
-cp "$SCRIPT_DIR/system/bbsyncer-web.service" /etc/systemd/system/
+cp "$SCRIPT_DIR/system/logfalcon@.service" /etc/systemd/system/
+cp "$SCRIPT_DIR/system/logfalcon-web.service" /etc/systemd/system/
 
 # Firstboot config service
 cp "$SCRIPT_DIR/system/firstboot.sh" "$INSTALL_DIR/firstboot.sh"
 chmod +x "$INSTALL_DIR/firstboot.sh"
-cp "$SCRIPT_DIR/system/bbsyncer-firstboot.service" /etc/systemd/system/
+cp "$SCRIPT_DIR/system/logfalcon-firstboot.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable bbsyncer-firstboot.service
-systemctl enable bbsyncer-web.service
+systemctl enable logfalcon-firstboot.service
+systemctl enable logfalcon-web.service
 systemctl enable hostapd
 systemctl enable dnsmasq
 systemctl enable avahi-daemon
 
 # Boot partition config (user-editable)
-if [[ ! -f /boot/firmware/bbsyncer-config.txt ]]; then
-  cp "$SCRIPT_DIR/boot/bbsyncer-config.txt" /boot/firmware/bbsyncer-config.txt
+if [[ ! -f /boot/firmware/logfalcon-config.txt ]]; then
+  cp "$SCRIPT_DIR/boot/logfalcon-config.txt" /boot/firmware/logfalcon-config.txt
 fi
-sed -i "s/^SSID=.*/SSID=$SSID/" /boot/firmware/bbsyncer-config.txt
-sed -i "s/^PASSWORD=.*/PASSWORD=$WIFI_PASSWORD/" /boot/firmware/bbsyncer-config.txt
+sed -i "s/^SSID=.*/SSID=$SSID/" /boot/firmware/logfalcon-config.txt
+sed -i "s/^PASSWORD=.*/PASSWORD=$WIFI_PASSWORD/" /boot/firmware/logfalcon-config.txt
 
 ### --- 7. udev rule --- ###
 echo "[7/8] Installing udev rule..."
@@ -197,7 +197,7 @@ echo "[8/8] Starting services..."
 systemctl restart hostapd || true
 systemctl restart dnsmasq || true
 systemctl restart avahi-daemon || true
-systemctl start bbsyncer-web.service || true
+systemctl start logfalcon-web.service || true
 
 echo ""
 echo "=== Install complete! ==="
@@ -211,10 +211,10 @@ if [[ $GENERATED_PASSWORD -eq 1 ]]; then
   echo ""
 fi
 echo "Startup note: after boot, give the Pi up to 90 seconds to bring up Wi-Fi and the web UI."
-echo "The same SSID/password is mirrored into /boot/firmware/bbsyncer-config.txt for later edits."
+echo "The same SSID/password is mirrored into /boot/firmware/logfalcon-config.txt for later edits."
 echo ""
 echo "To sync logs: plug a Betaflight FC into the Pi's USB OTG port."
 echo "To view logs: connect to the '$SSID' Wi-Fi network."
 echo ""
-echo "Check sync service status:  journalctl -u bbsyncer@ttyACM0 -f"
-echo "Check web server status:    journalctl -u bbsyncer-web -f"
+echo "Check sync service status:  journalctl -u logfalcon@ttyACM0 -f"
+echo "Check web server status:    journalctl -u logfalcon-web -f"

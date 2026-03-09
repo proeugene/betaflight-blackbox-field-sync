@@ -9,4 +9,4 @@ SUBSYSTEM=="tty", \
   ATTRS{idProduct}!="df11", \
   KERNEL=="ttyACM*", \
   TAG+="systemd", \
-  ENV{SYSTEMD_WANTS}="bbsyncer@%k.service"
+  ENV{SYSTEMD_WANTS}="logfalcon@%k.service"

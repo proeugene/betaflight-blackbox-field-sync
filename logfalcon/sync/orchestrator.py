@@ -22,23 +22,23 @@ import time
 from enum import Enum, auto
 from pathlib import Path
 
-from bbsyncer.config import Config
-from bbsyncer.fc.detector import (
+from logfalcon.config import Config
+from logfalcon.fc.detector import (
     FCDetectionError,
     FCNotBetaflight,
     FCSDCardBlackbox,
     detect_fc,
 )
-from bbsyncer.led.controller import LEDController, LEDState
-from bbsyncer.msp.client import MSPClient, MSPError
-from bbsyncer.storage.manifest import (
+from logfalcon.led.controller import LEDController, LEDState
+from logfalcon.msp.client import MSPClient, MSPError
+from logfalcon.storage.manifest import (
     cleanup_oldest_sessions,
     make_session_dir,
     update_manifest_erase,
     write_manifest,
 )
-from bbsyncer.storage.writer import StreamWriter
-from bbsyncer.util.disk_space import free_mb
+from logfalcon.storage.writer import StreamWriter
+from logfalcon.util.disk_space import free_mb
 
 log = logging.getLogger(__name__)
 

@@ -4,14 +4,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bbsyncer.fc.detector import (
+from logfalcon.fc.detector import (
     FCDetectionError,
     FCNotBetaflight,
     FCSDCardBlackbox,
     detect_fc,
 )
-from bbsyncer.msp.client import MSPClient, MSPError
-from bbsyncer.msp.constants import (
+from logfalcon.msp.client import MSPClient, MSPError
+from logfalcon.msp.constants import (
     BLACKBOX_DEVICE_FLASH,
     BLACKBOX_DEVICE_NONE,
     BLACKBOX_DEVICE_SDCARD,

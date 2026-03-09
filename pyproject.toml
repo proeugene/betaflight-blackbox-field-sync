@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "betaflight-blackbox-field-sync"
+name = "logfalcon"
 version = "0.1.2"
-description = "Field blackbox log syncer for Betaflight FCs via Raspberry Pi Zero W"
+description = "LogFalcon — Betaflight blackbox companion tool for field log sync via Raspberry Pi"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
@@ -25,16 +25,16 @@ dev = [
 ]
 
 [project.scripts]
-bbsyncer = "bbsyncer.__main__:main"
+logfalcon = "logfalcon.__main__:main"
 
 [tool.setuptools]
 ext-modules = [
-    { name = "bbsyncer._native._msp_fast", sources = ["bbsyncer/_native/_msp_fast.c"] },
+    { name = "logfalcon._native._msp_fast", sources = ["logfalcon/_native/_msp_fast.c"] },
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["bbsyncer*"]
+include = ["logfalcon*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

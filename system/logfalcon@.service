@@ -1,15 +1,15 @@
 # systemd template unit for bbsyncer sync service
-# Install to: /etc/systemd/system/bbsyncer@.service
-# Triggered by udev when FC is plugged in (e.g. bbsyncer@ttyACM0.service)
+# Install to: /etc/systemd/system/logfalcon@.service
+# Triggered by udev when FC is plugged in (e.g. logfalcon@ttyACM0.service)
 
 [Unit]
-Description=Betaflight Blackbox Syncer (%I)
-Documentation=https://github.com/proeugene/betaflight-blackbox-field-sync
+Description=LogFalcon (%I)
+Documentation=https://github.com/proeugene/logfalcon
 # Stop if the device disappears mid-sync
 BindsTo=dev-%i.device
 After=dev-%i.device network.target
 # Only one sync at a time
-Conflicts=bbsyncer@*.service
+Conflicts=logfalcon@*.service
 
 [Service]
 Type=oneshot
@@ -21,7 +21,7 @@ Group=dialout
 
 # Install location
 WorkingDirectory=/opt/bbsyncer
-ExecStart=/opt/bbsyncer/venv/bin/python -m bbsyncer --port /dev/%I
+ExecStart=/opt/logfalcon/venv/bin/python -m logfalcon --port /dev/%I
 
 StandardOutput=journal
 StandardError=journal

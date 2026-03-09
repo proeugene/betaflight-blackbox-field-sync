@@ -1,14 +1,14 @@
 """Tests for TOML configuration loading."""
 
-from bbsyncer.config import Config, _apply, load_config
+from logfalcon.config import Config, _apply, load_config
 
 
 class TestLoadConfig:
     def test_default_config_no_file(self):
-        cfg = load_config('/nonexistent/path/bbsyncer.toml')
+        cfg = load_config('/nonexistent/path/logfalcon.toml')
         assert isinstance(cfg, Config)
         assert cfg.serial_baud == 115200
-        assert cfg.storage_path == '/mnt/bbsyncer-logs'
+        assert cfg.storage_path == '/mnt/logfalcon-logs'
         assert cfg.erase_after_sync is True
         assert cfg.storage_pressure_cleanup is True
 

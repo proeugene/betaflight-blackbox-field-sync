@@ -1,4 +1,4 @@
-# Betaflight Blackbox Syncer — Configuration
+# LogFalcon — Configuration
 # Edit this file before inserting the SD card into your Pi.
 # Lines starting with # are comments.
 

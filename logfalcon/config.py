@@ -12,8 +12,8 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_CONFIG_PATH = Path('/etc/bbsyncer/bbsyncer.toml')
-_LOCAL_CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'bbsyncer.toml'
+_DEFAULT_CONFIG_PATH = Path('/etc/logfalcon/logfalcon.toml')
+_LOCAL_CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'logfalcon.toml'
 
 
 @dataclass
@@ -24,7 +24,7 @@ class Config:
     serial_timeout: float = 5.0
 
     # Storage
-    storage_path: str = '/mnt/bbsyncer-logs'
+    storage_path: str = '/mnt/logfalcon-logs'
     min_free_space_mb: int = 200
     storage_pressure_cleanup: bool = True
 
@@ -49,8 +49,8 @@ def load_config(path: str | None = None) -> Config:
 
     Search order:
     1. `path` argument (if provided)
-    2. /etc/bbsyncer/bbsyncer.toml
-    3. <repo>/config/bbsyncer.toml
+    2. /etc/logfalcon/logfalcon.toml
+    3. <repo>/config/logfalcon.toml
     4. All defaults
     """
     candidates = []

@@ -33,7 +33,7 @@ jobs:
           # Audit only third-party dependencies — our private package is not
           # on PyPI so we exclude it explicitly and keep --strict for everything else.
           pip list --format=freeze \
-            | grep -iv "betaflight.blackbox.field.sync" \
+            | grep -iv "logfalcon" \
             > /tmp/audit-deps.txt
           pip-audit --strict --desc -r /tmp/audit-deps.txt
 
@@ -51,11 +51,11 @@ jobs:
         run: pip install bandit
 
       - name: Run bandit
-        run: bandit -r bbsyncer/ -c pyproject.toml -f json -o bandit-report.json || true
+        run: bandit -r logfalcon/ -c pyproject.toml -f json -o bandit-report.json || true
 
       - name: Display results
         if: always()
-        run: bandit -r bbsyncer/ -c pyproject.toml
+        run: bandit -r logfalcon/ -c pyproject.toml
 
   codeql:
     name: CodeQL

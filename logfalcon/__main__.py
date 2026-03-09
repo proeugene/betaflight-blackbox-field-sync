@@ -1,17 +1,17 @@
-"""Entry point: python -m bbsyncer [--port /dev/ttyACM0] [--dry-run] [--web]
+"""Entry point: python -m logfalcon [--port /dev/ttyACM0] [--dry-run] [--web]
 
 Usage:
   # Run the sync service (triggered by systemd/udev):
-  python -m bbsyncer --port /dev/ttyACM0
+  python -m logfalcon --port /dev/ttyACM0
 
   # Run the web server:
-  python -m bbsyncer --web
+  python -m logfalcon --web
 
   # Dry-run (copy but don't erase):
-  python -m bbsyncer --port /dev/ttyACM0 --dry-run
+  python -m logfalcon --port /dev/ttyACM0 --dry-run
 
   # Override config file:
-  python -m bbsyncer --port /dev/ttyACM0 --config /etc/bbsyncer/bbsyncer.toml
+  python -m logfalcon --port /dev/ttyACM0 --config /etc/logfalcon/logfalcon.toml
 """
 
 from __future__ import annotations
@@ -20,15 +20,15 @@ import argparse
 import logging
 import sys
 
-from bbsyncer.config import load_config
-from bbsyncer.led.controller import LEDController
-from bbsyncer.sync.orchestrator import SyncOrchestrator, SyncResult, auto_detect_port
+from logfalcon.config import load_config
+from logfalcon.led.controller import LEDController
+from logfalcon.sync.orchestrator import SyncOrchestrator, SyncResult, auto_detect_port
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Betaflight Blackbox Field Syncer',
-        prog='python -m bbsyncer',
+        description='LogFalcon',
+        prog='python -m logfalcon',
     )
     parser.add_argument(
         '--port',
@@ -40,7 +40,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         '--config',
         '-c',
         default='',
-        help='Path to bbsyncer.toml config file.',
+        help='Path to logfalcon.toml config file.',
     )
     parser.add_argument(
         '--dry-run',
@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         format='%(asctime)s %(levelname)-8s %(name)s: %(message)s',
         datefmt='%H:%M:%S',
     )
-    log = logging.getLogger('bbsyncer')
+    log = logging.getLogger('logfalcon')
 
     cfg = load_config(args.config or None)
 
@@ -78,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     # Web server mode
     # ------------------------------------------------------------------
     if args.web:
-        from bbsyncer.web.server import run_server
+        from logfalcon.web.server import run_server
 
         run_server(storage_path=cfg.storage_path, port=cfg.web_port)
         return 0

@@ -3,8 +3,8 @@
 
 INSTALL_DIR="/opt/bbsyncer"
 CONFIG_DIR="/etc/bbsyncer"
-LOG_DIR="/mnt/bbsyncer-logs"
-REPO_DIR="/tmp/bbsyncer-src"
+LOG_DIR="/mnt/logfalcon-logs"
+REPO_DIR="/tmp/logfalcon-src"
 
 # Create bbsyncer system user
 if ! id bbsyncer &>/dev/null; then
@@ -24,7 +24,7 @@ python3 -m venv "$INSTALL_DIR/venv"
 
 # Config
 mkdir -p "$CONFIG_DIR"
-cp "$REPO_DIR/config/bbsyncer.toml" "$CONFIG_DIR/bbsyncer.toml"
+cp "$REPO_DIR/config/logfalcon.toml" "$CONFIG_DIR/logfalcon.toml"
 
 # Log storage
 mkdir -p "$LOG_DIR"

@@ -1,7 +1,7 @@
 """Tests for MSP frame encoder and decoder."""
 
-from bbsyncer.msp.crc import crc8_dvb_s2, crc8_xor
-from bbsyncer.msp.framing import FrameDecoder, encode_v1, encode_v2
+from logfalcon.msp.crc import crc8_dvb_s2, crc8_xor
+from logfalcon.msp.framing import FrameDecoder, encode_v1, encode_v2
 
 
 class TestEncodeV1:

@@ -9,11 +9,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from bbsyncer.config import Config
-from bbsyncer.fc.detector import FCInfo
-from bbsyncer.led.controller import LEDController, LEDState
-from bbsyncer.msp.constants import BLACKBOX_DEVICE_FLASH
-from bbsyncer.sync.orchestrator import SyncOrchestrator, SyncResult
+from logfalcon.config import Config
+from logfalcon.fc.detector import FCInfo
+from logfalcon.led.controller import LEDController, LEDState
+from logfalcon.msp.constants import BLACKBOX_DEVICE_FLASH
+from logfalcon.sync.orchestrator import SyncOrchestrator, SyncResult
 
 
 def make_config(storage_path: str, erase_after_sync: bool = True) -> Config:
@@ -55,7 +55,7 @@ class TestSyncOrchestratorSuccess:
         cfg = make_config(tmpdir, erase_after_sync=False)
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
 
             # FC identification
@@ -117,7 +117,7 @@ class TestSyncOrchestratorSuccess:
         cfg = make_config(tmpdir)
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
             client_instance.get_fc_variant.return_value = b'BTFL'
@@ -143,7 +143,7 @@ class TestSyncOrchestratorSuccess:
         cfg = make_config(tmpdir)
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
             client_instance.get_fc_variant.return_value = b'INAV'
@@ -162,7 +162,7 @@ class TestSyncOrchestratorSuccess:
         cfg = make_config(tmpdir, erase_after_sync=True)
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
             client_instance.get_fc_variant.return_value = b'BTFL'
@@ -201,10 +201,10 @@ class TestSyncOrchestratorSuccess:
         led = make_led()
 
         with (
-            patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient,
-            patch('bbsyncer.sync.orchestrator.free_mb', side_effect=[100.0, 250.0]),
+            patch('logfalcon.sync.orchestrator.MSPClient') as MockClient,
+            patch('logfalcon.sync.orchestrator.free_mb', side_effect=[100.0, 250.0]),
             patch(
-                'bbsyncer.sync.orchestrator.cleanup_oldest_sessions',
+                'logfalcon.sync.orchestrator.cleanup_oldest_sessions',
                 return_value=['fc_BTFL_uid-old/2026-01-01_120000'],
             ) as mock_cleanup,
         ):
@@ -243,7 +243,7 @@ class TestSyncOrchestratorErrors:
         cfg = make_config(tmpdir)
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
             client_instance.get_fc_variant.return_value = b'BTFL'
@@ -256,13 +256,13 @@ class TestSyncOrchestratorErrors:
         assert result == SyncResult.ERROR
 
     def test_too_many_read_errors(self, tmpdir):
-        from bbsyncer.msp.client import MSPError
+        from logfalcon.msp.client import MSPError
 
         cfg = make_config(tmpdir, erase_after_sync=False)
         cfg.flash_chunk_size = 8
         led = make_led()
 
-        with patch('bbsyncer.sync.orchestrator.MSPClient') as MockClient:
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
             client_instance.get_fc_variant.return_value = b'BTFL'
