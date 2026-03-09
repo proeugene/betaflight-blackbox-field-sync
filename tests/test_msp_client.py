@@ -22,6 +22,7 @@ from logfalcon.msp.framing import MSPFrame, encode_v1
 # Helpers: build raw response bytes that the FrameDecoder will accept
 # ---------------------------------------------------------------------------
 
+
 def _build_v1_response(code: int, payload: bytes = b'') -> bytes:
     """Build a valid MSP v1 response frame ($M> direction)."""
     size = len(payload)
@@ -32,13 +33,15 @@ def _build_v1_response(code: int, payload: bytes = b'') -> bytes:
 def _build_v2_response(code: int, payload: bytes = b'') -> bytes:
     """Build a valid MSP v2 response frame ($X> direction)."""
     size = len(payload)
-    header = bytes([
-        0,  # flag
-        code & 0xFF,
-        (code >> 8) & 0xFF,
-        size & 0xFF,
-        (size >> 8) & 0xFF,
-    ])
+    header = bytes(
+        [
+            0,  # flag
+            code & 0xFF,
+            (code >> 8) & 0xFF,
+            size & 0xFF,
+            (size >> 8) & 0xFF,
+        ]
+    )
     crc = crc8_dvb_s2(header + payload)
     return b'$X>' + header + payload + bytes([crc])
 
@@ -46,6 +49,7 @@ def _build_v2_response(code: int, payload: bytes = b'') -> bytes:
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_serial():
@@ -68,6 +72,7 @@ def client(mock_serial):
 # 1. _flush_frames
 # ---------------------------------------------------------------------------
 
+
 class TestFlushFrames:
     def test_removes_matching_frames_and_pending(self, client):
         frame_a = MSPFrame(version=1, direction=ord('>'), code=1, payload=b'\x00')
@@ -89,6 +94,7 @@ class TestFlushFrames:
 # ---------------------------------------------------------------------------
 # 2. request() — v1 and v2 framing
 # ---------------------------------------------------------------------------
+
 
 class TestRequest:
     def test_v1_request_response(self, client, mock_serial):
@@ -121,6 +127,7 @@ class TestRequest:
 # 3. request() timeout
 # ---------------------------------------------------------------------------
 
+
 class TestRequestTimeout:
     def test_raises_timeout_when_no_response(self, client, mock_serial):
         mock_serial.read.return_value = b''
@@ -132,6 +139,7 @@ class TestRequestTimeout:
 # ---------------------------------------------------------------------------
 # 4. get_api_version
 # ---------------------------------------------------------------------------
+
 
 class TestGetApiVersion:
     def test_parses_version_tuple(self, client, mock_serial):
@@ -155,6 +163,7 @@ class TestGetApiVersion:
 # 5. get_fc_variant
 # ---------------------------------------------------------------------------
 
+
 class TestGetFCVariant:
     def test_returns_4_byte_variant(self, client, mock_serial):
         payload = b'BTFL'
@@ -169,6 +178,7 @@ class TestGetFCVariant:
 # ---------------------------------------------------------------------------
 # 6. get_uid
 # ---------------------------------------------------------------------------
+
 
 class TestGetUID:
     def test_returns_hex_string(self, client, mock_serial):
@@ -189,6 +199,7 @@ class TestGetUID:
 # ---------------------------------------------------------------------------
 # 7. get_dataflash_summary
 # ---------------------------------------------------------------------------
+
 
 class TestGetDataflashSummary:
     def test_parses_summary_dict(self, client, mock_serial):
@@ -227,6 +238,7 @@ class TestGetDataflashSummary:
 # 8. send_flash_read_request
 # ---------------------------------------------------------------------------
 
+
 class TestSendFlashReadRequest:
     def test_encodes_correct_frame(self, client, mock_serial):
         address = 0x1000
@@ -249,6 +261,7 @@ class TestSendFlashReadRequest:
 # ---------------------------------------------------------------------------
 # 9. receive_flash_read_response
 # ---------------------------------------------------------------------------
+
 
 class TestReceiveFlashReadResponse:
     def test_parses_address_and_data(self, client, mock_serial):
@@ -282,6 +295,7 @@ class TestReceiveFlashReadResponse:
 # ---------------------------------------------------------------------------
 # 10. Corrupted frame handling
 # ---------------------------------------------------------------------------
+
 
 class TestCorruptedFrames:
     def test_bad_v1_crc_is_silently_dropped(self, client, mock_serial):

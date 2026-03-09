@@ -280,8 +280,9 @@ class TestSSEEndpoint:
                 raise BrokenPipeError('simulate disconnect')
             return {'state': 'idle', 'progress': 0, 'message': ''}
 
-        with patch('logfalcon.web.server.get_status', side_effect=fake_get_status), patch(
-            'logfalcon.web.server._time.sleep', side_effect=BrokenPipeError
+        with (
+            patch('logfalcon.web.server.get_status', side_effect=fake_get_status),
+            patch('logfalcon.web.server._time.sleep', side_effect=BrokenPipeError),
         ):
             response = _make_request_handler(str(tmp_path), 'GET', '/events')
         assert 'text/event-stream' in response

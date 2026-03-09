@@ -32,10 +32,10 @@ _SYSFS_TRIGGER = _SYSFS_LED / 'trigger'
 
 class LEDState(Enum):
     OFF = auto()
-    BOOTING = auto()   # slow heartbeat (1 s on / 1 s off) — Pi is starting up
-    BUSY = auto()      # fast blink (150 ms on / 150 ms off) — sync in progress
-    DONE = auto()      # 5× rapid flash then 3 s solid then off — safe to unplug
-    ERROR = auto()     # SOS repeating — something went wrong
+    BOOTING = auto()  # slow heartbeat (1 s on / 1 s off) — Pi is starting up
+    BUSY = auto()  # fast blink (150 ms on / 150 ms off) — sync in progress
+    DONE = auto()  # 5× rapid flash then 3 s solid then off — safe to unplug
+    ERROR = auto()  # SOS repeating — something went wrong
 
 
 _PATTERNS: dict[LEDState, tuple[list[tuple[int, int]], bool]] = {

@@ -250,6 +250,7 @@ def _render_index(storage: Path) -> str:
         csrf_token=_e(_CSRF_TOKEN),
     )
 
+
 def _render_settings(message: str = '', error: bool = False) -> str:
     hostapd = _read_hostapd_config()
     current_ssid = _e(hostapd.get('ssid', 'Unknown'))
@@ -274,6 +275,7 @@ def _render_settings(message: str = '', error: bool = False) -> str:
         warning_html=warning_html,
         csrf_token=_e(_CSRF_TOKEN),
     )
+
 
 def _resolve_session_path(storage: Path, session_id: str) -> Path:
     """Safely resolve a session_id like 'fc_BTFL_uid-abc/2026-02-26_143012'."""
@@ -633,9 +635,7 @@ def _start_idle_shutdown_timer(idle_minutes: int) -> None:
                 continue
             elapsed = _time.monotonic() - _last_sync_activity
             if elapsed >= timeout_sec:
-                log.warning(
-                    'No sync activity for %d minutes — shutting down', idle_minutes
-                )
+                log.warning('No sync activity for %d minutes — shutting down', idle_minutes)
                 subprocess.run(  # noqa: S603
                     ['/usr/bin/sudo', '/sbin/shutdown', '-h', 'now'],
                     check=False,

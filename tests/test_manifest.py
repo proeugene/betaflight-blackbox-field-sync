@@ -20,6 +20,7 @@ from logfalcon.storage.manifest import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_fc_info(
     uid: str = '12ab34cdef567890',
     variant: bytes = b'BTFL',
@@ -48,6 +49,7 @@ def _create_session(storage: Path, fc_name: str, session_name: str) -> Path:
 # make_session_dir()
 # ---------------------------------------------------------------------------
 
+
 class TestMakeSessionDir:
     def test_directory_structure(self, tmp_path):
         fc = _make_fc_info(uid='aabbccdd11223344')
@@ -72,6 +74,7 @@ class TestMakeSessionDir:
 # ---------------------------------------------------------------------------
 # write_manifest()
 # ---------------------------------------------------------------------------
+
 
 class TestWriteManifest:
     def test_json_structure(self, tmp_path):
@@ -117,6 +120,7 @@ class TestWriteManifest:
 # list_sessions()
 # ---------------------------------------------------------------------------
 
+
 class TestListSessions:
     def test_lists_sessions_newest_first(self, tmp_path):
         _create_session(tmp_path, 'fc_BTFL_uid-aaaa', '2026-01-01_100000')
@@ -148,7 +152,9 @@ class TestListSessions:
             sessions = list_sessions(tmp_path)
 
         assert sessions == []
-        assert any('corrupted' in r.message.lower() or 'Skipping' in r.message for r in caplog.records)
+        assert any(
+            'corrupted' in r.message.lower() or 'Skipping' in r.message for r in caplog.records
+        )
 
     def test_empty_directory(self, tmp_path):
         sessions = list_sessions(tmp_path)
@@ -172,6 +178,7 @@ class TestListSessions:
 # ---------------------------------------------------------------------------
 # cleanup_oldest_sessions()
 # ---------------------------------------------------------------------------
+
 
 class TestCleanupOldestSessions:
     def test_deletes_oldest_first(self, tmp_path):

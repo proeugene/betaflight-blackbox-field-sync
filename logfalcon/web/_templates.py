@@ -406,7 +406,7 @@ def render_index(
         if (shutMin > 0 && shutSec != null) {{
           const m = Math.floor(shutSec / 60);
           const s = shutSec % 60;
-          shutText.textContent = '\u23FB Auto-shutdown in ' + m + ' min ' + s + ' sec \u2014 activity resets timer';
+          shutText.textContent = '\u23fb Auto-shutdown in ' + m + ' min ' + s + ' sec \u2014 activity resets timer';
           shutBanner.style.display = 'block';
           if (shutSec < 60) {{
             shutBanner.style.background = '#2a0a0a';

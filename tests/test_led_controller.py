@@ -17,6 +17,7 @@ from logfalcon.led.controller import (
 # LEDState enum
 # ---------------------------------------------------------------------------
 
+
 class TestLEDStateEnum:
     def test_all_expected_states_exist(self):
         expected = {'OFF', 'BOOTING', 'BUSY', 'DONE', 'ERROR'}
@@ -31,6 +32,7 @@ class TestLEDStateEnum:
 # ---------------------------------------------------------------------------
 # _PATTERNS dict
 # ---------------------------------------------------------------------------
+
 
 class TestPatterns:
     def test_every_state_has_pattern(self):
@@ -75,6 +77,7 @@ class TestPatterns:
 # LEDController.set_state()
 # ---------------------------------------------------------------------------
 
+
 class TestSetState:
     def test_state_is_stored(self):
         ctrl = LEDController(backend='sysfs')
@@ -117,6 +120,7 @@ class TestSetState:
 # LEDController.start() / stop()
 # ---------------------------------------------------------------------------
 
+
 class TestStartStop:
     @patch.object(LEDController, '_sysfs_disable_trigger')
     @patch.object(LEDController, '_run')
@@ -146,6 +150,7 @@ class TestStartStop:
 # Sysfs backend
 # ---------------------------------------------------------------------------
 
+
 class TestSysfsBackend:
     def test_sysfs_write_on(self):
         mock_path = MagicMock()
@@ -173,6 +178,7 @@ class TestSysfsBackend:
 # ---------------------------------------------------------------------------
 # GPIO backend
 # ---------------------------------------------------------------------------
+
 
 class TestGPIOBackend:
     def _make_mock_gpio(self):
@@ -218,6 +224,7 @@ class TestGPIOBackend:
 # Pattern execution — BUSY blink intervals
 # ---------------------------------------------------------------------------
 
+
 class TestPatternExecution:
     @patch.object(LEDController, '_sysfs_disable_trigger')
     def test_busy_pattern_blinks(self, mock_trigger):
@@ -229,6 +236,7 @@ class TestPatternExecution:
             ctrl.set_state(LEDState.BUSY)
 
             import time
+
             time.sleep(0.4)
 
             ctrl.stop()
@@ -243,6 +251,7 @@ class TestPatternExecution:
 # ---------------------------------------------------------------------------
 # _interruptible_sleep()
 # ---------------------------------------------------------------------------
+
 
 class TestInterruptibleSleep:
     def test_returns_false_when_not_interrupted(self):
@@ -259,6 +268,7 @@ class TestInterruptibleSleep:
 
         def change_state():
             import time
+
             time.sleep(0.02)
             ctrl.set_state(LEDState.DONE)
 
@@ -273,6 +283,7 @@ class TestInterruptibleSleep:
 # ---------------------------------------------------------------------------
 # DONE pattern shape
 # ---------------------------------------------------------------------------
+
 
 class TestDonePattern:
     def test_done_has_burst_solid_off_sequence(self):

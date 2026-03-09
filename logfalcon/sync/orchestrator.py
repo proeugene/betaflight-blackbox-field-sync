@@ -229,9 +229,7 @@ class SyncOrchestrator:
         if not summary['ready']:
             log.error('FC flash not ready (may be busy)')
             self.led.set_state(LEDState.ERROR)
-            _set_status(
-                'error', message='The FC flash is busy right now. Try again in a moment.'
-            )
+            _set_status('error', message='The FC flash is busy right now. Try again in a moment.')
             return SyncResult.ERROR
 
         used_size = summary['used_size']
@@ -404,13 +402,9 @@ class SyncOrchestrator:
     def _verify_integrity(self, writer: StreamWriter, used_size: int) -> str | SyncResult:
         """Step 7: Verify SHA-256 integrity. Returns file_sha256 on success."""
         if writer.bytes_written != used_size:
-            log.error(
-                'Size mismatch: wrote %d bytes, expected %d', writer.bytes_written, used_size
-            )
+            log.error('Size mismatch: wrote %d bytes, expected %d', writer.bytes_written, used_size)
             self.led.set_state(LEDState.ERROR)
-            _set_status(
-                'error', message='The copied file size did not match the FC flash size.'
-            )
+            _set_status('error', message='The copied file size did not match the FC flash size.')
             return SyncResult.ERROR
 
         match, file_sha256 = writer.verify_against_file()
