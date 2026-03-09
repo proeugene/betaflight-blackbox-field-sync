@@ -1,8 +1,8 @@
 {
-  "name": "betaflight-blackbox-field-sync-site",
+  "name": "logfalcon-site",
   "private": true,
   "version": "0.1.0",
-  "description": "Single-page marketing site for Betaflight Blackbox Field Syncer",
+  "description": "Single-page marketing site for LogFalcon",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js"

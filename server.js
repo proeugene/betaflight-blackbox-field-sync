@@ -50,5 +50,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Betaflight Blackbox Field Syncer site running on http://localhost:${PORT}`);
+  console.log(`LogFalcon site running on http://localhost:${PORT}`);
 });
