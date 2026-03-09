@@ -43,7 +43,7 @@ _sessions_cache: tuple[float, list] = (0.0, [])
 _SESSIONS_TTL = 10.0  # seconds
 _SERVER_STARTED_AT = _time.monotonic()
 _CSRF_TOKEN = secrets.token_urlsafe(24)
-_DEFAULT_HOTSPOT_PASSWORD = 'fpvpilot'  # noqa: S105
+_DEFAULT_HOTSPOT_PASSWORD = 'fpvpilot'  # noqa: S105  # nosec B105 — well-known factory default, user-changeable
 _ALLOWED_DOWNLOADS = frozenset({'raw_flash.bbl', 'manifest.json'})
 
 
