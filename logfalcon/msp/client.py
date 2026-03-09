@@ -14,6 +14,7 @@ import serial
 import serial.serialutil
 
 from .constants import (
+    BTFL_VARIANT,
     DATAFLASH_COMPRESSION_HUFFMAN,
     DATAFLASH_FLAG_READY,
     DATAFLASH_FLAG_SUPPORTED,
@@ -55,6 +56,7 @@ class MSPClient:
         self._ser: serial.Serial | None = None
         self._decoder = FrameDecoder()
         self._pending: dict[int, MSPFrame] = {}
+        self.fc_variant: bytes = BTFL_VARIANT  # set after detection; affects response parsing
 
     def open(self) -> None:
         self._ser = serial.Serial(
@@ -168,26 +170,39 @@ class MSPClient:
 
     def send_flash_read_request(self, address: int, size: int, compression: bool = False) -> None:
         """Send a DATAFLASH_READ request without waiting for response."""
+        # iNav doesn't support Huffman compression
+        if self.fc_variant != BTFL_VARIANT:
+            compression = False
         payload = struct.pack('<IHB', address, size, 1 if compression else 0)
         # Flush stale frames for this code
         self._flush_frames(MSP_DATAFLASH_READ)
         self.send(MSP_DATAFLASH_READ, payload)
 
     def _parse_flash_read_payload(self, payload: bytes) -> tuple[int, bytes]:
-        """Parse a DATAFLASH_READ response payload into (address, data)."""
-        if len(payload) < 7:
-            raise MSPError(f'Short DATAFLASH_READ response (len={len(payload)})')
+        """Parse a DATAFLASH_READ response payload into (address, data).
 
-        chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', payload)
-        raw_data = payload[7 : 7 + data_size]
-
-        if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
-            if len(raw_data) < 2:
-                raise MSPError('Compressed chunk too short for char count header')
-            char_count = struct.unpack_from('<H', raw_data)[0]
-            data = huffman_decode(raw_data[2:], char_count)
+        Betaflight format: addr(4B) + data_size(2B) + compression_type(1B) + data
+        iNav format:       addr(4B) + raw data (no length/compression header)
+        """
+        if self.fc_variant == BTFL_VARIANT:
+            # Betaflight: 7-byte header
+            if len(payload) < 7:
+                raise MSPError(f'Short DATAFLASH_READ response (len={len(payload)})')
+            chunk_addr, data_size, compression_type = struct.unpack_from('<IHB', payload)
+            raw_data = payload[7 : 7 + data_size]
+            if compression_type == DATAFLASH_COMPRESSION_HUFFMAN:
+                if len(raw_data) < 2:
+                    raise MSPError('Compressed chunk too short for char count header')
+                char_count = struct.unpack_from('<H', raw_data)[0]
+                data = huffman_decode(raw_data[2:], char_count)
+            else:
+                data = raw_data
         else:
-            data = raw_data
+            # iNav (and other MSP FCs): addr(4B) + raw data
+            if len(payload) < 4:
+                raise MSPError(f'Short DATAFLASH_READ response (len={len(payload)})')
+            chunk_addr = struct.unpack_from('<I', payload)[0]
+            data = payload[4:]
 
         return chunk_addr, data
 
@@ -205,8 +220,11 @@ class MSPClient:
         """Read *size* bytes from flash starting at *address*.
 
         Returns (actual_address, data_bytes).
-        Response format: addr(4B LE) + data_size(2B LE) + compression_type(1B) + data[data_size]
+        Response format varies by FC variant (set via self.fc_variant).
         """
+        # iNav doesn't support compression
+        if self.fc_variant != BTFL_VARIANT:
+            compression = False
         payload = struct.pack('<IHB', address, size, 1 if compression else 0)
         frame = self.request(MSP_DATAFLASH_READ, payload)
         return self._parse_flash_read_payload(frame.payload)

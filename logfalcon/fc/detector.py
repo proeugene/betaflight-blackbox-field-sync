@@ -7,9 +7,11 @@ from dataclasses import dataclass
 
 from logfalcon.msp.client import MSPClient, MSPError
 from logfalcon.msp.constants import (
+    BLACKBOX_DEVICE_FLASH,
     BLACKBOX_DEVICE_NONE,
     BLACKBOX_DEVICE_SDCARD,
     BTFL_VARIANT,
+    SUPPORTED_VARIANTS,
 )
 
 log = logging.getLogger(__name__)
@@ -19,7 +21,7 @@ log = logging.getLogger(__name__)
 class FCInfo:
     api_major: int
     api_minor: int
-    variant: bytes  # e.g. b'BTFL'
+    variant: bytes  # e.g. b'BTFL' or b'INAV'
     uid: str  # hex string, e.g. "12ab34cdef..."
     blackbox_device: int
 
@@ -28,8 +30,14 @@ class FCDetectionError(Exception):
     pass
 
 
-class FCNotBetaflight(FCDetectionError):
+class FCNotSupported(FCDetectionError):
+    """FC variant is not supported (not Betaflight or iNav)."""
+
     pass
+
+
+# Keep old name as alias for backwards compatibility
+FCNotBetaflight = FCNotSupported
 
 
 class FCSDCardBlackbox(FCDetectionError):
@@ -45,10 +53,10 @@ class FCBlackboxEmpty(FCDetectionError):
 
 
 def detect_fc(client: MSPClient) -> FCInfo:
-    """Run MSP handshake, verify BTFL, return FC info.
+    """Run MSP handshake, verify supported FC variant, return FC info.
 
     Raises:
-        FCNotBetaflight: Variant != BTFL
+        FCNotSupported: Variant not in SUPPORTED_VARIANTS
         FCSDCardBlackbox: Blackbox device is SD card
         FCDetectionError: Other identification failure
     """
@@ -64,8 +72,11 @@ def detect_fc(client: MSPClient) -> FCInfo:
     except MSPError as exc:
         raise FCDetectionError(f'MSP FC_VARIANT failed: {exc}') from exc
 
-    if variant[:4] != BTFL_VARIANT:
-        raise FCNotBetaflight(f'Expected BTFL variant, got {variant!r}')
+    if variant[:4] not in SUPPORTED_VARIANTS:
+        raise FCNotSupported(
+            f'Unsupported FC variant {variant!r} — expected one of: '
+            + ', '.join(v.decode() for v in sorted(SUPPORTED_VARIANTS))
+        )
 
     uid = 'unknown'
     try:
@@ -74,13 +85,21 @@ def detect_fc(client: MSPClient) -> FCInfo:
     except MSPError:
         log.warning("Could not read FC UID, using 'unknown'")
 
+    # iNav deprecated MSP_BLACKBOX_CONFIG (80) — returns all zeros.
+    # For iNav, skip the device-type check and infer flash support from
+    # DATAFLASH_SUMMARY later in the orchestrator.
     blackbox_device = BLACKBOX_DEVICE_NONE
-    try:
-        bb_cfg = client.get_blackbox_config()
-        blackbox_device = bb_cfg.get('device', BLACKBOX_DEVICE_NONE)
-        log.info('Blackbox device type: %d', blackbox_device)
-    except MSPError as exc:
-        log.warning('Could not read BLACKBOX_CONFIG: %s', exc)
+    if variant[:4] == BTFL_VARIANT:
+        try:
+            bb_cfg = client.get_blackbox_config()
+            blackbox_device = bb_cfg.get('device', BLACKBOX_DEVICE_NONE)
+            log.info('Blackbox device type: %d', blackbox_device)
+        except MSPError as exc:
+            log.warning('Could not read BLACKBOX_CONFIG: %s', exc)
+    else:
+        # For iNav, assume flash until DATAFLASH_SUMMARY proves otherwise
+        blackbox_device = BLACKBOX_DEVICE_FLASH
+        log.info('Non-Betaflight FC — skipping BLACKBOX_CONFIG, assuming flash')
 
     if blackbox_device == BLACKBOX_DEVICE_SDCARD:
         raise FCSDCardBlackbox(

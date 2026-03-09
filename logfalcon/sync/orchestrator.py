@@ -2,7 +2,7 @@
 
 Steps:
   1. Wait (handled by systemd ExecStartPre)
-  2. Identify FC (MSP handshake, verify BTFL)
+  2. Identify FC (MSP handshake, verify supported variant)
   3. Query flash state (summary)
   4. Check Pi storage
   5. Prepare output (session dir + file)
@@ -26,7 +26,7 @@ from logfalcon.config import Config
 from logfalcon.fc.detector import (
     FCDetectionError,
     FCInfo,
-    FCNotBetaflight,
+    FCNotSupported,
     FCSDCardBlackbox,
     detect_fc,
 )
@@ -193,11 +193,15 @@ class SyncOrchestrator:
         """Step 2: Detect and identify the flight controller."""
         try:
             fc_info = detect_fc(client)
-        except (FCSDCardBlackbox, FCNotBetaflight, FCDetectionError) as exc:
+        except (FCSDCardBlackbox, FCNotSupported, FCDetectionError) as exc:
             log.error('FC detection failed: %s', exc)
             self.led.set_state(LEDState.ERROR)
             _set_status('error', message=str(exc))
             return SyncResult.ERROR
+
+        # Tell the MSP client which variant we're talking to so it
+        # can adjust response parsing (e.g. iNav vs Betaflight format).
+        client.fc_variant = fc_info.variant[:4]
 
         log.info('FC identified: variant=%r uid=%s', fc_info.variant, fc_info.uid)
         return fc_info

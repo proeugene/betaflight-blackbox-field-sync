@@ -257,6 +257,15 @@ class TestSendFlashReadRequest:
         expected_frame = encode_v1(MSP_DATAFLASH_READ, expected_payload)
         mock_serial.write.assert_called_once_with(expected_frame)
 
+    def test_inav_suppresses_compression(self, client, mock_serial):
+        """iNav doesn't support Huffman — compression flag is forced off."""
+        client.fc_variant = b'INAV'
+        client.send_flash_read_request(0, 256, compression=True)
+
+        expected_payload = struct.pack('<IHB', 0, 256, 0)  # compression=0
+        expected_frame = encode_v1(MSP_DATAFLASH_READ, expected_payload)
+        mock_serial.write.assert_called_once_with(expected_frame)
+
 
 # ---------------------------------------------------------------------------
 # 9. receive_flash_read_response
@@ -290,6 +299,51 @@ class TestReceiveFlashReadResponse:
 
         with pytest.raises(MSPError, match='Short'):
             client.receive_flash_read_response()
+
+    def test_inav_parses_raw_format(self, client, mock_serial):
+        """iNav response: addr(4B) + raw data (no length/compression header)."""
+        client.fc_variant = b'INAV'
+        address = 0x4000
+        data = b'\xca\xfe\xba\xbe\x01\x02\x03'
+        payload = struct.pack('<I', address) + data
+
+        mock_serial.read.side_effect = [
+            _build_v1_response(MSP_DATAFLASH_READ, payload),
+            b'',
+        ]
+
+        addr, result_data = client.receive_flash_read_response()
+
+        assert addr == address
+        assert result_data == data
+
+    def test_inav_short_response_raises(self, client, mock_serial):
+        """iNav response with < 4 bytes should raise."""
+        client.fc_variant = b'INAV'
+        payload = b'\x00\x01\x02'  # only 3 bytes
+        mock_serial.read.side_effect = [
+            _build_v1_response(MSP_DATAFLASH_READ, payload),
+            b'',
+        ]
+
+        with pytest.raises(MSPError, match='Short'):
+            client.receive_flash_read_response()
+
+    def test_inav_empty_data(self, client, mock_serial):
+        """iNav EOF: addr(4B) + 0 bytes of data."""
+        client.fc_variant = b'INAV'
+        address = 0x8000
+        payload = struct.pack('<I', address)  # just the address, no data
+
+        mock_serial.read.side_effect = [
+            _build_v1_response(MSP_DATAFLASH_READ, payload),
+            b'',
+        ]
+
+        addr, result_data = client.receive_flash_read_response()
+
+        assert addr == address
+        assert result_data == b''
 
 
 # ---------------------------------------------------------------------------

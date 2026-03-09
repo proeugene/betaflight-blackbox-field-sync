@@ -7,6 +7,7 @@ import pytest
 from logfalcon.fc.detector import (
     FCDetectionError,
     FCNotBetaflight,
+    FCNotSupported,
     FCSDCardBlackbox,
     detect_fc,
 )
@@ -30,7 +31,7 @@ def make_client(**overrides):
 
 
 class TestDetectFC:
-    def test_success(self):
+    def test_success_betaflight(self):
         client = make_client()
         info = detect_fc(client)
         assert info.variant == b'BTFL'
@@ -39,10 +40,23 @@ class TestDetectFC:
         assert info.api_minor == 45
         assert info.blackbox_device == BLACKBOX_DEVICE_FLASH
 
-    def test_not_betaflight(self):
+    def test_success_inav(self):
         client = make_client(variant=b'INAV')
-        with pytest.raises(FCNotBetaflight):
+        info = detect_fc(client)
+        assert info.variant == b'INAV'
+        assert info.uid == 'deadbeef12345678'
+        # iNav skips BLACKBOX_CONFIG, assumes flash
+        assert info.blackbox_device == BLACKBOX_DEVICE_FLASH
+        client.get_blackbox_config.assert_not_called()
+
+    def test_unsupported_variant(self):
+        client = make_client(variant=b'KISS')
+        with pytest.raises(FCNotSupported):
             detect_fc(client)
+
+    def test_not_betaflight_alias(self):
+        """FCNotBetaflight is an alias for FCNotSupported."""
+        assert FCNotBetaflight is FCNotSupported
 
     def test_sd_card_blackbox(self):
         client = make_client(bb_config={'device': BLACKBOX_DEVICE_SDCARD})
@@ -73,7 +87,7 @@ class TestDetectFC:
         info = detect_fc(client)
         assert info.blackbox_device == BLACKBOX_DEVICE_NONE
 
-    def test_short_variant_not_btfl(self):
+    def test_short_variant_not_supported(self):
         client = make_client(variant=b'BT')
-        with pytest.raises(FCNotBetaflight):
+        with pytest.raises(FCNotSupported):
             detect_fc(client)

@@ -138,15 +138,72 @@ class TestSyncOrchestratorSuccess:
         assert result == SyncResult.ALREADY_EMPTY
         led.set_state.assert_called_with(LEDState.DONE)
 
-    def test_not_betaflight(self, tmpdir):
-        """Non-BTFL FC should return ERROR."""
+    def test_inav_successful_sync(self, tmpdir):
+        """Full sync flow with an iNav FC."""
+        flash_data = b'\xab\xcd' * 8  # 16 bytes
+
+        cfg = make_config(tmpdir, erase_after_sync=False)
+        led = make_led()
+
+        with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
+            client_instance = MockClient.return_value.__enter__.return_value
+
+            # iNav FC
+            client_instance.get_api_version.return_value = (2, 5)
+            client_instance.get_fc_variant.return_value = b'INAV'
+            client_instance.get_uid.return_value = 'inavfc0012345678'
+            # BLACKBOX_CONFIG should NOT be called for iNav
+            client_instance.get_blackbox_config.return_value = {'device': 0}
+
+            client_instance.get_dataflash_summary.return_value = {
+                'flags': 0x03,
+                'sectors': 256,
+                'total_size': 4096,
+                'used_size': len(flash_data),
+                'supported': True,
+                'ready': True,
+            }
+
+            chunks = [(0, flash_data[:8]), (8, flash_data[8:])]
+            call_idx = [0]
+
+            def fake_receive(compression=False):
+                r = chunks[call_idx[0]]
+                call_idx[0] = min(call_idx[0] + 1, len(chunks) - 1)
+                return r
+
+            client_instance.receive_flash_read_response.side_effect = fake_receive
+
+            orch = SyncOrchestrator(cfg, led, dry_run=False)
+            result = orch.run('/dev/ttyACM0')
+
+        assert result == SyncResult.SUCCESS
+
+        # Verify the variant was set on the client
+        assert client_instance.fc_variant == b'INAV'
+
+        # Verify session dir uses INAV prefix
+        storage = Path(tmpdir)
+        sessions = list(storage.rglob('raw_flash.bbl'))
+        assert len(sessions) == 1
+        bbl = sessions[0]
+        assert bbl.read_bytes() == flash_data
+        assert 'fc_INAV_uid-' in str(bbl.parent.parent)
+
+        # Verify manifest
+        manifest_path = bbl.parent / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        assert manifest['fc']['variant'] == 'INAV'
+
+    def test_unsupported_fc_variant(self, tmpdir):
+        """Unsupported FC variant should return ERROR."""
         cfg = make_config(tmpdir)
         led = make_led()
 
         with patch('logfalcon.sync.orchestrator.MSPClient') as MockClient:
             client_instance = MockClient.return_value.__enter__.return_value
             client_instance.get_api_version.return_value = (1, 42)
-            client_instance.get_fc_variant.return_value = b'INAV'
+            client_instance.get_fc_variant.return_value = b'KISS'
             client_instance.get_uid.return_value = 'aabb'
             client_instance.get_blackbox_config.return_value = {'device': 1}
 

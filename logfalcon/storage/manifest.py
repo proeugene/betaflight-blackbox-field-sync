@@ -33,11 +33,12 @@ def make_session_dir(storage_root: Path, fc_info: FCInfo) -> Path:
 
     Layout::
 
-        <storage_root>/fc_BTFL_uid-<uid8>/<YYYY-MM-DD_HHMMSS>/
+        <storage_root>/fc_<VARIANT>_uid-<uid8>/<YYYY-MM-DD_HHMMSS>/
     """
     # Use first 8 chars of UID (or 'unknown') for the directory name
     uid_short = fc_info.uid[:8] if fc_info.uid != 'unknown' else 'unknown'
-    fc_dir = storage_root / f'fc_BTFL_uid-{uid_short}'
+    variant_str = fc_info.variant[:4].decode('ascii', errors='replace')
+    fc_dir = storage_root / f'fc_{variant_str}_uid-{uid_short}'
     timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
     session_dir = fc_dir / timestamp
     session_dir.mkdir(parents=True, exist_ok=True)
