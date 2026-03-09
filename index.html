@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Blackbox Field Syncer — clear Betaflight blackbox flash at the field. No laptop needed.">
+  <title>Blackbox Field Syncer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <div class="wrap">
+    <!-- NAV -->
+    <nav>
+      <span class="brand">Blackbox Field Syncer</span>
+      <a class="nav-link" href="https://github.com/proeugene/betaflight-blackbox-field-sync" target="_blank" rel="noopener">GitHub →</a>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <p class="eyebrow">For FPV pilots</p>
+      <h1>Clear flash.<br>Fly more.</h1>
+      <p class="subtitle">FC flash full? Plug in. Wait for the LED. Unplug. Fly again.<br>Repeat all session. No laptop. No dongles. Never leave the field.</p>
+      <div class="ctas">
+        <a href="#steps" class="btn-primary">How it works</a>
+        <a href="#needs" class="btn-secondary">What you need</a>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-val accent">30–40s</span>
+          <span class="stat-label">typical 2 MB sync</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">No laptop</span>
+          <span class="stat-label">no dongles, no leaving the field</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val">Wi-Fi</span>
+          <span class="stat-label">download logs on your phone</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEPS -->
+    <section id="steps" class="section">
+      <p class="eyebrow">How it works</p>
+      <div class="steps">
+        <div class="step"><span class="step-num">01</span><p>FC flash is full. Land.</p></div>
+        <div class="step"><span class="step-num">02</span><p>Plug FC into the Pi.</p></div>
+        <div class="step"><span class="step-num">03</span><p>LED confirms. Unplug.</p></div>
+        <div class="step"><span class="step-num">04</span><p>Fly again. Repeat.</p></div>
+      </div>
+    </section>
+
+    <!-- WHY + NEEDS -->
+    <section id="needs" class="section split">
+      <div class="card">
+        <p class="eyebrow">Why</p>
+        <h2>Before: laptop<br>or dongle.</h2>
+        <p class="card-body">FC flash fills up fast. Clearing it used to mean a laptop and Configurator, or an expensive third-party dongle — either way, you're done flying.<br><br>Now: a Pi Zero W in your bag. Plug in, wait 30 seconds, fly again. Logs are timestamped and ready to analyse at home.</p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">You need</p>
+        <div class="chips">
+          <span class="chip">Pi Zero W / Zero 2 W</span>
+          <span class="chip">microSD</span>
+          <span class="chip">Battery bank</span>
+          <span class="chip">OTG cable</span>
+          <span class="chip">Betaflight SPI flash FC</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTE -->
+    <section class="note">
+      <span class="note-icon">⚠</span>
+      <div>
+        <strong>SPI flash only.</strong>
+        <span> Works with Betaflight internal SPI flash. Not FC SD-card blackbox.</span>
+      </div>
+    </section>
+
+    <footer>Betaflight Blackbox Field Syncer · Open source</footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

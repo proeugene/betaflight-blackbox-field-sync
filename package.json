@@ -1,0 +1,13 @@
+{
+  "name": "betaflight-blackbox-field-sync-site",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Single-page marketing site for Betaflight Blackbox Field Syncer",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
