@@ -168,6 +168,10 @@ ip link set wlan0 up 2>/dev/null || true
 echo "[6/8] Installing systemd units..."
 cp "$SCRIPT_DIR/system/logfalcon@.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/system/logfalcon-web.service" /etc/systemd/system/
+cp "$SCRIPT_DIR/system/logfalcon-boot-led.service" /etc/systemd/system/
+
+# Boot LED heartbeat script
+install -m 755 "$SCRIPT_DIR/system/logfalcon-boot-led.sh" "$INSTALL_DIR/boot-led.sh"
 
 # Firstboot config service
 cp "$SCRIPT_DIR/system/firstboot.sh" "$INSTALL_DIR/firstboot.sh"
@@ -176,6 +180,7 @@ cp "$SCRIPT_DIR/system/logfalcon-firstboot.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable logfalcon-firstboot.service
 systemctl enable logfalcon-web.service
+systemctl enable logfalcon-boot-led.service
 systemctl enable hostapd
 systemctl enable dnsmasq
 systemctl enable avahi-daemon

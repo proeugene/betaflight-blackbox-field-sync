@@ -20,6 +20,10 @@ rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
 install -m 644 "${REPO_ROOT}/system/logfalcon@.service" "${ROOTFS_DIR}/etc/systemd/system/"
 install -m 644 "${REPO_ROOT}/system/logfalcon-web.service" "${ROOTFS_DIR}/etc/systemd/system/"
 install -m 644 "${REPO_ROOT}/system/logfalcon-firstboot.service" "${ROOTFS_DIR}/etc/systemd/system/"
+install -m 644 "${REPO_ROOT}/system/logfalcon-boot-led.service" "${ROOTFS_DIR}/etc/systemd/system/"
+
+# Copy boot LED heartbeat script
+install -m 755 "${REPO_ROOT}/system/logfalcon-boot-led.sh" "${ROOTFS_DIR}/opt/logfalcon/boot-led.sh"
 
 # Copy udev rule
 install -m 644 "${REPO_ROOT}/system/99-betaflight-fc.rules" "${ROOTFS_DIR}/etc/udev/rules.d/"
@@ -32,6 +36,7 @@ install -m 644 "${REPO_ROOT}/boot/logfalcon-config.txt" "${ROOTFS_DIR}/boot/"
 on_chroot << CHEOF
 systemctl enable logfalcon-web.service
 systemctl enable logfalcon-firstboot.service
+systemctl enable logfalcon-boot-led.service
 systemctl enable hostapd
 systemctl enable dnsmasq
 systemctl enable avahi-daemon
