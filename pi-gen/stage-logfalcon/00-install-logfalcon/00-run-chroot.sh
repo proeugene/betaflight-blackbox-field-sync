@@ -53,25 +53,35 @@ chmod +x "$INSTALL_DIR/firstboot.sh"
 chown -R bbsyncer:bbsyncer "$INSTALL_DIR" "$CONFIG_DIR"
 
 # ── Disable conflicting services ────────────────────────────────────────────
-# wpa_supplicant runs in Wi-Fi client mode and will fight hostapd for wlan0.
-# We are an AP-only appliance — disable all variants.
-# Use direct symlink removal: `systemctl disable` is unreliable in a chroot
-# because there is no D-Bus / running systemd to communicate with.
-#
-# Remove the main service, the D-Bus activation alias, and the per-interface
-# instance unit (wpa_supplicant@wlan0.service) used by Pi Zero 2 W Bookworm.
+# This is an AP-only appliance. Several services fight hostapd for wlan0.
+# Strategy: mask everything that manages Wi-Fi in client mode.
+# Masking (symlink → /dev/null) beats any later `systemctl enable` call
+# and survives pi-gen's export-image stage which can reinstall packages.
+
+# wpa_supplicant — Wi-Fi client supplicant, fights hostapd for wlan0
 rm -f /etc/systemd/system/multi-user.target.wants/wpa_supplicant.service
 rm -f /etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service
 rm -f /etc/systemd/system/dbus-fi.w1.wpa_supplicant1.service
-# Also mask it so it can never be activated by D-Bus or dependency pulls
-ln -sf /dev/null /etc/systemd/system/wpa_supplicant.service 2>/dev/null || true
-ln -sf /dev/null /etc/systemd/system/wpa_supplicant@wlan0.service 2>/dev/null || true
+ln -sf /dev/null /etc/systemd/system/wpa_supplicant.service
+ln -sf /dev/null /etc/systemd/system/wpa_supplicant@wlan0.service
 
-# Disable Bookworm first-boot user config wizard.
-# userconf.txt on the boot partition (created by 00-run.sh) is the primary fix;
-# removing this symlink is belt-and-suspenders. Again, direct removal is reliable
-# where `systemctl disable` silently fails in chroot.
+# NetworkManager — Raspberry Pi OS Bookworm installs NM enabled by default.
+# NM takes over wlan0 in managed/client mode, completely preventing hostapd
+# from starting an AP. Must be masked, not just disabled.
+rm -f /etc/systemd/system/multi-user.target.wants/NetworkManager.service
+rm -f /etc/systemd/system/network-online.target.wants/NetworkManager-wait-online.service
+rm -f /etc/systemd/system/multi-user.target.wants/ModemManager.service
+rm -f /etc/systemd/system/dbus-org.freedesktop.ModemManager1.service
+ln -sf /dev/null /etc/systemd/system/NetworkManager.service
+ln -sf /dev/null /etc/systemd/system/NetworkManager-wait-online.service
+ln -sf /dev/null /etc/systemd/system/ModemManager.service
+
+# userconfig.service — Bookworm first-boot wizard (shows "enter username" prompt).
+# pi-gen's export-image stage installs userconf-pi AFTER our custom stage runs,
+# which re-creates the multi-user.target.wants symlink. Masking with /dev/null
+# prevents any re-enable: masked units cannot be started or re-enabled.
 rm -f /etc/systemd/system/multi-user.target.wants/userconfig.service
+ln -sf /dev/null /etc/systemd/system/userconfig.service
 
 # Cleanup
 rm -rf "$REPO_DIR"

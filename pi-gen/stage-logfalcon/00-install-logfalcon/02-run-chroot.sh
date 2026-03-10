@@ -61,6 +61,14 @@ EOF
 # Enable hostapd config
 sed -i 's|#DAEMON_CONF=.*|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default/hostapd 2>/dev/null || true
 
+# Belt-and-suspenders: tell NetworkManager to never manage wlan0 or usb0,
+# in case NM gets un-masked by a later package install or user action.
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/logfalcon-unmanaged.conf <<EOF
+[keyfile]
+unmanaged-devices=interface-name:wlan0;interface-name:usb0
+EOF
+
 # dnsmasq config
 cat > /etc/dnsmasq.d/logfalcon.conf <<EOF
 interface=wlan0
@@ -128,8 +136,8 @@ fi
 cat > /etc/systemd/system/logfalcon-wifi-init.service <<EOF
 [Unit]
 Description=LogFalcon Wi-Fi regulatory domain and rfkill init
-# Must run before hostapd and dnsmasq acquire wlan0
-Before=hostapd.service dnsmasq.service
+# Must run before anything that tries to use wlan0 (networkd, hostapd, dnsmasq)
+Before=hostapd.service dnsmasq.service systemd-networkd.service
 After=sys-subsystem-net-devices-wlan0.device
 Requires=sys-subsystem-net-devices-wlan0.device
 

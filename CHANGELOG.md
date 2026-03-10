@@ -2,6 +2,27 @@
 
 All notable changes to LogFalcon are documented here.
 
+## [v0.4.3] — 2026-03
+
+### Fixed — Wi-Fi hotspot (again): NetworkManager was taking over wlan0
+
+The root cause of the persistent "no hotspot" issue was **NetworkManager** — Raspberry Pi OS Bookworm installs and enables it by default. NetworkManager takes over `wlan0` in managed/client mode before hostapd can start an AP, silently preventing the hotspot from ever appearing.
+
+Additionally, `userconfig.service` (the "enter username" first-boot wizard) was being re-enabled by pi-gen's export-image stage, which installs `userconf-pi` **after** our custom stage. The previous `rm -f` fix was being overwritten.
+
+**Fixes:**
+1. **NetworkManager masked** — `NetworkManager.service`, `NetworkManager-wait-online.service`, and `ModemManager.service` are all masked (`→ /dev/null`). NetworkManager can no longer manage `wlan0`.
+2. **Belt-and-suspenders NM config** — `/etc/NetworkManager/conf.d/logfalcon-unmanaged.conf` marks `wlan0` and `usb0` as unmanaged, even if NM were un-masked by a future package install.
+3. **`userconfig.service` properly masked** — now masked via `ln -sf /dev/null /etc/systemd/system/userconfig.service` so it survives pi-gen's export-image stage reinstalling `userconf-pi`.
+4. **`logfalcon-wifi-init.service`** now also runs `Before=systemd-networkd.service` so rfkill is unblocked and the regulatory domain is set before anything tries to configure wlan0.
+
+## [v0.4.2] — 2026-03
+
+### Added
+- **USB gadget SSH baked into every image** — `dtoverlay=dwc2` added to `config.txt` and `modules-load=dwc2,g_ether` added to `cmdline.txt` at build time. No manual configuration needed. Connect Pi's OTG data port to Mac, set Mac adapter to `10.55.55.2`, then `ssh pi@10.55.55.1`.
+
+---
+
 ## [v0.4.1] — 2026-03
 
 ### Fixed — Wi-Fi hotspot on Pi Zero 2 W
