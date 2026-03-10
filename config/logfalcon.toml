@@ -2,7 +2,7 @@
 # Copy to /etc/logfalcon/logfalcon.toml on the Pi
 
 # Serial port to connect to the FC
-serial_baud = 115200
+serial_baud = 921600
 serial_port = ""           # empty = auto-detect /dev/ttyACM*
 serial_timeout = 5.0
 
@@ -13,7 +13,7 @@ storage_pressure_cleanup = true  # auto-delete oldest sessions only if needed to
 
 # Sync behaviour
 erase_after_sync = true    # set to false for dry-run / testing
-flash_chunk_size = 16384
+flash_chunk_size = 4096
 erase_timeout_sec = 120
 flash_read_compression = false  # false = more reliable; true = faster
 

@@ -335,13 +335,13 @@ internal/
 
 ### How the Sync Works
 
-The Pi speaks **MSP v1** over USB CDC-ACM. A udev rule detects the FC (STM VID `0x0483`) and fires a one-shot systemd service:
+The Pi speaks **MSP v2** (with v1 fallback for handshake) over USB CDC-ACM. A udev rule detects the FC (STM VID `0x0483`) and fires a one-shot systemd service:
 
 1. Wait 3s for USB to settle
 2. Identify FC — `MSP_FC_VARIANT` (must be `BTFL` or `INAV`) + `MSP_UID`
 3. Query flash — `MSP_DATAFLASH_SUMMARY`
 4. Check Pi has enough storage
-5. Stream flash in 16 KB pipelined chunks → `.bbl` file
+5. Stream flash in 4 KB pipelined MSP v2 chunks → `.bbl` file
 6. Verify SHA-256 of the saved file
 7. Write `manifest.json` (audit trail)
 8. Erase FC flash (only if verify passed)

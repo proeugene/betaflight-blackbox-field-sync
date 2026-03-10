@@ -73,9 +73,9 @@ Both options require leaving the field or spending money on extra hardware. This
 - **Language:** Go 1.22+
 - **Binary size:** ~6 MB (single static binary, no runtime dependencies)
 - **External deps:** `go.bug.st/serial` (serial port), `pelletier/go-toml` (config), `golang.org/x/sys` (disk stats)
-- **Protocol:** MSP v1/v2
+- **Protocol:** MSP v1/v2 (v2 for flash reads — 16× throughput vs v1)
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
-- **Current version:** `0.3.1`
+- **Current version:** `0.3.2`
 
 ## Major project areas
 
@@ -114,6 +114,21 @@ This project is for **internal SPI flash blackbox** workflows (Betaflight and iN
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.3.2 — Performance Optimization
+
+### MSP v2 flash reads & high-speed serial
+- **MSP v2 for flash reads**: 16-bit length field enables ~4 KB responses instead of 255 B with v1 (~16× per-frame throughput)
+- **Baud rate 921,600**: 8× raw throughput over UART (USB CDC ignores baud — runs at USB speed)
+- **Faster retry**: error recovery delay reduced from 100 ms to 10 ms
+- **Chunk size aligned**: request size set to 4,096 to match Betaflight's MSP serial buffer
+- **Config updated**: sample `logfalcon.toml` defaults now match code (baud=921600, chunk=4096)
+
+### Estimated sync times (16 MB flash)
+| Connection | Before (v0.3.1) | After (v0.3.2) |
+|---|---|---|
+| UART | ~20 min | ~2.5 min |
+| USB | ~5–9 min | ~30–60 sec |
 
 ## v0.3.1 — Infrastructure Cleanup
 
