@@ -54,11 +54,18 @@ chown -R bbsyncer:bbsyncer "$INSTALL_DIR" "$CONFIG_DIR"
 
 # ── Disable conflicting services ────────────────────────────────────────────
 # wpa_supplicant runs in Wi-Fi client mode and will fight hostapd for wlan0.
-# We are an AP-only appliance — disable it.
+# We are an AP-only appliance — disable all variants.
 # Use direct symlink removal: `systemctl disable` is unreliable in a chroot
 # because there is no D-Bus / running systemd to communicate with.
+#
+# Remove the main service, the D-Bus activation alias, and the per-interface
+# instance unit (wpa_supplicant@wlan0.service) used by Pi Zero 2 W Bookworm.
 rm -f /etc/systemd/system/multi-user.target.wants/wpa_supplicant.service
+rm -f /etc/systemd/system/multi-user.target.wants/wpa_supplicant@wlan0.service
 rm -f /etc/systemd/system/dbus-fi.w1.wpa_supplicant1.service
+# Also mask it so it can never be activated by D-Bus or dependency pulls
+ln -sf /dev/null /etc/systemd/system/wpa_supplicant.service 2>/dev/null || true
+ln -sf /dev/null /etc/systemd/system/wpa_supplicant@wlan0.service 2>/dev/null || true
 
 # Disable Bookworm first-boot user config wizard.
 # userconf.txt on the boot partition (created by 00-run.sh) is the primary fix;

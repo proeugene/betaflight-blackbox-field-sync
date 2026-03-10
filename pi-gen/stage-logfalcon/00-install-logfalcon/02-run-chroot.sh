@@ -2,6 +2,7 @@
 # Configure Wi-Fi hotspot
 
 HOTSPOT_IP="192.168.4.1"
+USB_GADGET_IP="10.55.55.1"
 
 # Static IP on wlan0 via dhcpcd (standard RPi OS Bookworm networking)
 if [ -f /etc/dhcpcd.conf ]; then
@@ -11,6 +12,10 @@ if [ -f /etc/dhcpcd.conf ]; then
 interface wlan0
 static ip_address=${HOTSPOT_IP}/24
 nohook wpa_supplicant
+
+# USB gadget interface (for SSH debugging when hotspot is unavailable)
+interface usb0
+static ip_address=${USB_GADGET_IP}/24
 EOF
 else
     # Fallback: systemd-networkd for non-dhcpcd images
@@ -21,6 +26,13 @@ Name=wlan0
 
 [Network]
 Address=${HOTSPOT_IP}/24
+EOF
+    cat > /etc/systemd/network/10-usb0-static.network <<EOF
+[Match]
+Name=usb0
+
+[Network]
+Address=${USB_GADGET_IP}/24
 EOF
     systemctl enable systemd-networkd 2>/dev/null || true
 fi
@@ -66,7 +78,7 @@ grep -q "^no-resolv" /etc/dnsmasq.conf 2>/dev/null || echo "no-resolv" >> /etc/d
 mkdir -p /etc/systemd/system/dnsmasq.service.d
 cat > /etc/systemd/system/dnsmasq.service.d/wait-for-wlan0.conf <<EOF
 [Unit]
-After=sys-subsystem-net-devices-wlan0.device network-online.target
+After=sys-subsystem-net-devices-wlan0.device network-online.target logfalcon-wifi-init.service
 Requires=sys-subsystem-net-devices-wlan0.device
 [Service]
 Restart=on-failure
@@ -77,7 +89,7 @@ EOF
 mkdir -p /etc/systemd/system/hostapd.service.d
 cat > /etc/systemd/system/hostapd.service.d/wait-for-wlan0.conf <<EOF
 [Unit]
-After=sys-subsystem-net-devices-wlan0.device
+After=sys-subsystem-net-devices-wlan0.device logfalcon-wifi-init.service
 Requires=sys-subsystem-net-devices-wlan0.device
 [Service]
 Restart=on-failure
@@ -87,5 +99,47 @@ EOF
 # avahi mDNS hostname
 sed -i 's/^#*host-name=.*/host-name=logfalcon/' /etc/avahi/avahi-daemon.conf 2>/dev/null || true
 
-# Unblock Wi-Fi at boot
-rfkill unblock wlan 2>/dev/null || true
+# ── Wi-Fi regulatory domain + rfkill ─────────────────────────────────────────
+# The Linux wireless subsystem (cfg80211) must have a country code set before
+# hostapd can start AP mode. Without it the chip stays in world regulatory
+# mode (00) which blocks or restricts AP mode — especially on Pi Zero 2 W.
+#
+# wpa_supplicant normally sets the country, but we disable it.
+# Fix: a oneshot systemd service that runs iw/rfkill before hostapd.
+#
+# Also write a minimal wpa_supplicant.conf with country= so cfg80211 picks it
+# up from the file even with wpa_supplicant disabled.
+mkdir -p /etc/wpa_supplicant
+cat > /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+EOF
+
+# crda fallback
+if [ -f /etc/default/crda ]; then
+    sed -i 's/^REGDOMAIN=.*/REGDOMAIN=US/' /etc/default/crda
+    grep -q "^REGDOMAIN=" /etc/default/crda || echo "REGDOMAIN=US" >> /etc/default/crda
+fi
+
+# Boot-time service: sets regulatory domain and unblocks rfkill BEFORE hostapd.
+# This is the reliable fix — rfkill state and regulatory domain are not
+# persisted across reboots; they must be set each boot.
+cat > /etc/systemd/system/logfalcon-wifi-init.service <<EOF
+[Unit]
+Description=LogFalcon Wi-Fi regulatory domain and rfkill init
+# Must run before hostapd and dnsmasq acquire wlan0
+Before=hostapd.service dnsmasq.service
+After=sys-subsystem-net-devices-wlan0.device
+Requires=sys-subsystem-net-devices-wlan0.device
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'rfkill unblock all; iw reg set US; sleep 1'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable logfalcon-wifi-init.service
