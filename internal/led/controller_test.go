@@ -41,10 +41,6 @@ func (m *mockBackend) isOn() bool {
 	return m.on
 }
 
-func (m *mockBackend) getSetCount() int64 {
-	return atomic.LoadInt64(&m.setCount)
-}
-
 func (m *mockBackend) didDisableTrigger() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()

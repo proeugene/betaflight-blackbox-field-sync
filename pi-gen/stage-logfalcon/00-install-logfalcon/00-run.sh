@@ -11,9 +11,9 @@ if [ ! -d "${REPO_ROOT}" ]; then
 fi
 
 mkdir -p "${ROOTFS_DIR}/tmp/logfalcon-src"
-# Copy source (exclude .git, .venv, etc.)
-rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
-    --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
+mkdir -p "${ROOTFS_DIR}/opt/logfalcon"
+# Copy source (exclude .git, pi-gen, etc.)
+rsync -a --exclude='.git' --exclude='pi-gen' \
     "${REPO_ROOT}/" "${ROOTFS_DIR}/tmp/logfalcon-src/"
 
 # Copy systemd units
