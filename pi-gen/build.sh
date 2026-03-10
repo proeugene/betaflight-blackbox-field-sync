@@ -17,6 +17,14 @@ if [[ ! -d "$SCRIPT_DIR/pi-gen-repo" ]]; then
     git clone --depth 1 --branch bookworm https://github.com/RPi-Distro/pi-gen.git "$SCRIPT_DIR/pi-gen-repo"
 fi
 
+# Cross-compile for ARM before copying into pi-gen
+echo "Cross-compiling logfalcon for ARM..."
+cd "$REPO_ROOT"
+make build-pi
+make build-pi2
+cp bin/logfalcon-arm6 bin/logfalcon
+ls -la bin/
+
 # Copy our config and stage into pi-gen
 cp "$SCRIPT_DIR/config" "$SCRIPT_DIR/pi-gen-repo/config"
 rm -rf "$SCRIPT_DIR/pi-gen-repo/stage-logfalcon"
@@ -24,8 +32,7 @@ cp -r "$SCRIPT_DIR/stage-logfalcon" "$SCRIPT_DIR/pi-gen-repo/stage-logfalcon"
 
 # Copy project source into pi-gen so it's accessible inside the Docker build
 rm -rf "$SCRIPT_DIR/pi-gen-repo/logfalcon-src"
-rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
-    --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
+rsync -a --exclude='.git' --exclude='pi-gen' \
     "$REPO_ROOT/" "$SCRIPT_DIR/pi-gen-repo/logfalcon-src/"
 
 # Skip stages 3, 4, 5 (safety net — STAGE_LIST already limits to 0-2 + logfalcon)

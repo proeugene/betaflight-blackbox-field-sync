@@ -34,6 +34,19 @@ jobs:
       - name: Clone pi-gen
         run: git clone --depth 1 --branch bookworm https://github.com/RPi-Distro/pi-gen.git pi-gen/pi-gen-repo
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Cross-compile logfalcon for ARM
+        run: |
+          make build-pi
+          make build-pi2
+          # Fallback binary for QEMU chroot where uname -m returns host arch
+          cp bin/logfalcon-arm6 bin/logfalcon
+          ls -la bin/
+
       - name: Configure pi-gen
         run: |
           # Copy our config and custom stage

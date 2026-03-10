@@ -22,9 +22,9 @@ mkdir -p "$INSTALL_DIR"
 # Detect architecture and copy appropriate binary
 ARCH=$(uname -m)
 case "$ARCH" in
-    armv6l)  BINARY_NAME="logfalcon-arm6" ;;
-    aarch64) BINARY_NAME="logfalcon-arm64" ;;
-    *)       BINARY_NAME="logfalcon" ;;
+    armv6l|armv7l) BINARY_NAME="logfalcon-arm6" ;;
+    aarch64)       BINARY_NAME="logfalcon-arm64" ;;
+    *)             BINARY_NAME="logfalcon" ;;
 esac
 
 if [ -f "$REPO_DIR/bin/$BINARY_NAME" ]; then
