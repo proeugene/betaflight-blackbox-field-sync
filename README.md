@@ -443,14 +443,26 @@ The Pi speaks **MSP v2** (with v1 fallback for handshake) over USB CDC-ACM. A ud
 
 ## Contributing
 
-1. Fork → feature branch → make changes → add tests
-2. Run `make lint && make test`
-3. Open a Pull Request against `main`
+See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to submit PRs, and how to report hardware compatibility.
 
-CI checks linting, tests (with race detector), and multi-arch builds automatically.
+---
+
+## Support the project
+
+If LogFalcon saves your session, consider:
+
+- ⭐ **Star the repo** — helps other pilots find it
+- ☕ **[Ko-fi](https://ko-fi.com)** — one-off donation
+- 🐛 **[Report your FC board](https://github.com/proeugene/logfalcon/issues/new?template=hardware_compat.md)** — every confirmed FC helps other pilots
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
 ## License
 
-MIT
+[MIT](LICENSE) — Eugene Prokopev
