@@ -2,6 +2,23 @@
 
 All notable changes to LogFalcon are documented here.
 
+## [v0.4.1] — 2026-03
+
+### Fixed — Wi-Fi hotspot on Pi Zero 2 W
+
+Three root causes diagnosed via USB gadget inspection:
+
+1. **`rfkill unblock` ran at build time** — completely ineffective; rfkill resets on every boot. Replaced with `logfalcon-wifi-init.service`, a oneshot systemd unit that runs `rfkill unblock all` before hostapd on every boot.
+
+2. **Regulatory domain never set at runtime** — `country_code=US` in `hostapd.conf` is not enough. The Linux wireless subsystem (`cfg80211`) needs the country set at the kernel level before hostapd can start AP mode. On Pi Zero 2 W this blocked AP startup entirely. Fix: `wifi-init` service runs `iw reg set US`; also writes a minimal `/etc/wpa_supplicant/wpa_supplicant.conf` with `country=US` so `cfg80211` picks it up from the file.
+
+3. **`wpa_supplicant@wlan0.service`** (per-interface instance unit, used by Pi Zero 2 W Bookworm) was not disabled — only the main unit was removed. Fix: both the instance and main unit are now removed **and masked** (`→ /dev/null`) so they cannot be activated by D-Bus or dependency pulls.
+
+### Added
+- **USB gadget SSH** (`10.55.55.1`) — `usb0` now gets a static IP via dhcpcd so SSH debugging over USB OTG works without needing the hotspot. Plug the Pi's data USB port into your Mac, set your Mac adapter to `10.55.55.2`, then `ssh pi@10.55.55.1`.
+
+---
+
 ## [v0.4.0] — 2025-03
 
 ### Added

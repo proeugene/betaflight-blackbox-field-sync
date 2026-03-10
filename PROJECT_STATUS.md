@@ -105,7 +105,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - automated tests passing: **71 tests** (Go, with race detector)
 - vet and build checks passing
 - cross-compilation verified: ARM6 (Pi Zero W) and ARM64 (Pi Zero 2 W)
-- version: **0.4.0** (Go rewrite)
+- version: **0.4.1** (Go rewrite)
 
 ### Important scope boundary
 
