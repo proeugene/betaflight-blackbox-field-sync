@@ -43,8 +43,7 @@ jobs:
 
           # Copy project source into pi-gen so scripts can access it
           rm -rf pi-gen/pi-gen-repo/logfalcon-src
-          rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' \
-              --exclude='*.egg-info' --exclude='.pytest_cache' --exclude='pi-gen' \
+          rsync -a --exclude='.git' --exclude='pi-gen' \
               ./ pi-gen/pi-gen-repo/logfalcon-src/
 
           # Skip desktop stages (safety net — STAGE_LIST already limits stages)

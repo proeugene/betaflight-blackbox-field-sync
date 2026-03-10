@@ -6,9 +6,9 @@
 #   sudo bash install.sh [--ssid "MySSID"] [--password "MyPass"]
 #
 # What this does:
-#   1. Install system packages (hostapd, dnsmasq, avahi, Python)
+#   1. Install system packages (hostapd, dnsmasq, avahi)
 #   2. Create bbsyncer system user (legacy name kept for compatibility)
-#   3. Install Python package into /opt/logfalcon/venv
+#   3. Install Go binary into /opt/logfalcon/
 #   4. Set up Wi-Fi hotspot (hostapd + dnsmasq + static IP)
 #   5. Mount point for log storage (/mnt/logfalcon-logs)
 #   6. Install systemd units (sync service + web server)

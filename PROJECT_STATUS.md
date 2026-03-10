@@ -75,7 +75,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - **External deps:** `go.bug.st/serial` (serial port), `pelletier/go-toml` (config), `golang.org/x/sys` (disk stats)
 - **Protocol:** MSP v1/v2
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
-- **Current version:** `0.3.0`
+- **Current version:** `0.3.1`
 
 ## Major project areas
 
@@ -105,7 +105,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - automated tests passing: **71 tests** (Go, with race detector)
 - vet and build checks passing
 - cross-compilation verified: ARM6 (Pi Zero W) and ARM64 (Pi Zero 2 W)
-- version: **0.3.0** (Go rewrite)
+- version: **0.3.1** (Go rewrite)
 
 ### Important scope boundary
 
@@ -114,6 +114,17 @@ This project is for **internal SPI flash blackbox** workflows (Betaflight and iN
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.3.1 — Infrastructure Cleanup
+
+### Python removal & Go-native infrastructure
+- **Removed all legacy Python code**: `logfalcon/`, `tests/`, `pyproject.toml`
+- **Dockerfile rewritten**: multi-stage Go build (golang:1.22-alpine → alpine:3.20)
+- **pi-gen updated**: removed Python3/pip/venv packages, now copies pre-built Go binary
+- **CI/CD cleaned**: removed old Python CI, rewrote security workflow (govulncheck + CodeQL)
+- **.gitignore modernised**: replaced Python entries with Go-specific patterns
+- **Pilot guide added**: `docs/guide.html` — 9-section field guide matching HUD design
+- **Structured logging**: all packages migrated from log.Printf to slog
 
 ## v0.3.0 — Go Rewrite
 

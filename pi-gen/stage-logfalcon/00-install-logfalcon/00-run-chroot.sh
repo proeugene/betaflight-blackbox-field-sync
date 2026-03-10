@@ -16,11 +16,25 @@ fi
 # Add to gpio group if it exists
 usermod -a -G gpio bbsyncer 2>/dev/null || true
 
-# Create venv and install
+# Install Go binary
 mkdir -p "$INSTALL_DIR"
-python3 -m venv "$INSTALL_DIR/venv"
-"$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade pip setuptools wheel
-"$INSTALL_DIR/venv/bin/pip" install --quiet "$REPO_DIR"
+
+# Detect architecture and copy appropriate binary
+ARCH=$(uname -m)
+case "$ARCH" in
+    armv6l)  BINARY_NAME="logfalcon-arm6" ;;
+    aarch64) BINARY_NAME="logfalcon-arm64" ;;
+    *)       BINARY_NAME="logfalcon" ;;
+esac
+
+if [ -f "$REPO_DIR/bin/$BINARY_NAME" ]; then
+    install -m 755 "$REPO_DIR/bin/$BINARY_NAME" "$INSTALL_DIR/logfalcon"
+elif [ -f "$REPO_DIR/logfalcon" ]; then
+    install -m 755 "$REPO_DIR/logfalcon" "$INSTALL_DIR/logfalcon"
+else
+    echo "ERROR: No logfalcon binary found in $REPO_DIR"
+    exit 1
+fi
 
 # Config
 mkdir -p "$CONFIG_DIR"
