@@ -57,6 +57,13 @@ type Status struct {
 	TotalBytes  uint32  `json:"total_bytes"`
 	SpeedBPS    float64 `json:"speed_bps"`
 	ETASec      int     `json:"eta_sec"`
+	// FC identity — populated once the handshake completes.
+	FCVariant         string `json:"fc_variant"`          // e.g. "BTFL" or "INAV"
+	FCFirmwareVersion string `json:"fc_firmware_version"` // e.g. "4.5.0"
+	FCAPIVersion      string `json:"fc_api_version"`      // e.g. "1.46"
+	// Warning is non-empty when firmware is newer than max tested.
+	// The sync proceeds but the user is shown an amber notice.
+	Warning string `json:"warning,omitempty"`
 }
 
 var (
@@ -75,14 +82,32 @@ func GetStatus() Status {
 }
 
 // SetStatus updates the sync status (thread-safe).
+// FC identity fields and Warning are preserved from the previous status so
+// they remain visible throughout the sync session.
 func SetStatus(state string, progress int, message string) {
 	statusMu.Lock()
 	defer statusMu.Unlock()
+	prev := currentStatus
 	currentStatus = Status{
-		State:    state,
-		Progress: progress,
-		Message:  message,
+		State:             state,
+		Progress:          progress,
+		Message:           message,
+		FCVariant:         prev.FCVariant,
+		FCFirmwareVersion: prev.FCFirmwareVersion,
+		FCAPIVersion:      prev.FCAPIVersion,
+		Warning:           prev.Warning,
 	}
+}
+
+// setFCIdentity stores the FC identity fields after a successful handshake.
+// Call this before SetStatus so subsequent SetStatus calls preserve them.
+func setFCIdentity(info *fc.FCInfo) {
+	statusMu.Lock()
+	defer statusMu.Unlock()
+	currentStatus.FCVariant = info.Variant
+	currentStatus.FCFirmwareVersion = info.FirmwareVersion
+	currentStatus.FCAPIVersion = fmt.Sprintf("%d.%d", info.APIMajor, info.APIMinor)
+	currentStatus.Warning = info.Warning
 }
 
 // SetStatusSync updates sync status with real-time transfer metrics (thread-safe).
@@ -90,16 +115,22 @@ func SetStatus(state string, progress int, message string) {
 func SetStatusSync(state string, progress int, message string, bytesCopied, totalBytes uint32, speedBPS float64, etaSec int) {
 	statusMu.Lock()
 	defer statusMu.Unlock()
+	prev := currentStatus
 	currentStatus = Status{
-		State:       state,
-		Progress:    progress,
-		Message:     message,
-		BytesCopied: bytesCopied,
-		TotalBytes:  totalBytes,
-		SpeedBPS:    speedBPS,
-		ETASec:      etaSec,
+		State:             state,
+		Progress:          progress,
+		Message:           message,
+		BytesCopied:       bytesCopied,
+		TotalBytes:        totalBytes,
+		SpeedBPS:          speedBPS,
+		ETASec:            etaSec,
+		FCVariant:         prev.FCVariant,
+		FCFirmwareVersion: prev.FCFirmwareVersion,
+		FCAPIVersion:      prev.FCAPIVersion,
+		Warning:           prev.Warning,
 	}
 }
+
 
 // Orchestrator runs the full blackbox sync workflow.
 type Orchestrator struct {
@@ -153,7 +184,15 @@ func (o *Orchestrator) run(portPath string) (SyncResult, error) {
 	defer client.Close()
 
 	// --- Step 2: Identify FC ---
+	// Clear any FC identity from the previous session so the dashboard doesn't
+	// show stale version info while the new handshake is in progress.
 	slog.Info("step 2: identifying FC", "port", portPath)
+	statusMu.Lock()
+	currentStatus.FCVariant = ""
+	currentStatus.FCFirmwareVersion = ""
+	currentStatus.FCAPIVersion = ""
+	currentStatus.Warning = ""
+	statusMu.Unlock()
 	SetStatus("identifying", 0, "Checking the flight controller over MSP.")
 	identifyStarted := time.Now()
 
@@ -161,6 +200,7 @@ func (o *Orchestrator) run(portPath string) (SyncResult, error) {
 	if result != nil {
 		return *result, nil
 	}
+	setFCIdentity(fcInfo) // publish FC identity + warning to dashboard
 	timings["identify_sec"] = secondsSince(identifyStarted)
 
 	// --- Step 3: Query flash state ---

@@ -225,6 +225,11 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		"total_bytes":  status.TotalBytes,
 		"speed_bps":    status.SpeedBPS,
 		"eta_sec":      status.ETASec,
+		// FC identity — empty strings until handshake completes.
+		"fc_variant":          status.FCVariant,
+		"fc_firmware_version": status.FCFirmwareVersion,
+		"fc_api_version":      status.FCAPIVersion,
+		"warning":             status.Warning,
 	}
 	s.addIdleShutdownInfo(payload)
 	s.sendJSON(w, r, http.StatusOK, payload)

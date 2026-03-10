@@ -13,10 +13,12 @@ type mockClient struct {
 	variant            string
 	uid                string
 	bbDevice           int
+	fwVersion          string
 	apiErr             error
 	varErr             error
 	uidErr             error
 	bbErr              error
+	fwErr              error
 	bbCalled           bool // tracks whether GetBlackboxConfig was invoked
 }
 
@@ -35,6 +37,13 @@ func (m *mockClient) GetUID() (string, error) {
 func (m *mockClient) GetBlackboxConfig() (int, error) {
 	m.bbCalled = true
 	return m.bbDevice, m.bbErr
+}
+
+func (m *mockClient) GetFCVersion() (string, error) {
+	if m.fwVersion != "" {
+		return m.fwVersion, m.fwErr
+	}
+	return "4.0.0", m.fwErr
 }
 
 func TestDetectBTFL(t *testing.T) {

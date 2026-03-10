@@ -222,6 +222,10 @@ func RenderIndex(params IndexParams) string {
   <span id="idle-shutdown-text"></span>
 </div>
 
+<div id="version-warning-banner" style="display:none; background:#3a2a10; border-bottom:1px solid #704d15; padding:8px 20px; font-size:0.8rem; color:#ffca80; text-align:center;">
+  ⚠ <span id="version-warning-text"></span>
+</div>
+
 <div id="sync-progress-container" style="background:#1a2a3a; padding:0 20px; display:none;">
   <div style="max-width:700px; margin:0 auto; padding:8px 0; font-size:0.8rem; color:#60b0ff;">
     <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;">
@@ -241,6 +245,9 @@ func RenderIndex(params IndexParams) string {
       <div class="disk-bar-fill" style="width: %d%%"></div>
     </div>
     <div id="status-detail">%s</div>
+    <div id="fc-identity" style="display:none; margin-top:8px; padding:6px 8px; background:#0e1a2a; border-radius:6px; font-size:0.75rem; color:#6080a0;">
+      <span id="fc-identity-text"></span>
+    </div>
   </div>
 
   <div class="help-card">
@@ -345,6 +352,27 @@ func RenderIndex(params IndexParams) string {
           }
         } else {
           shutBanner.style.display = 'none';
+        }
+
+        // FC identity line — shown once handshake completes.
+        const fcIdentity = document.getElementById('fc-identity');
+        const fcIdentityText = document.getElementById('fc-identity-text');
+        if (data.fc_variant) {
+          let fc = data.fc_variant;
+          if (data.fc_firmware_version) fc += ' ' + data.fc_firmware_version;
+          if (data.fc_api_version) fc += '  (API ' + data.fc_api_version + ')';
+          fcIdentityText.textContent = '\u26a1 FC: ' + fc;
+          fcIdentity.style.display = 'block';
+        } else {
+          fcIdentity.style.display = 'none';
+        }
+
+        // Version warning banner — amber, persists until page reload.
+        const warnBanner = document.getElementById('version-warning-banner');
+        const warnText = document.getElementById('version-warning-text');
+        if (data.warning) {
+          warnText.textContent = data.warning;
+          warnBanner.style.display = 'block';
         }
       })
       .catch(() => {});

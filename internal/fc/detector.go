@@ -10,11 +10,13 @@ import (
 
 // FCInfo holds identification info from the MSP handshake.
 type FCInfo struct {
-	APIMajor       int
-	APIMinor       int
-	Variant        string // "BTFL" or "INAV"
-	UID            string // hex string
-	BlackboxDevice int
+	APIMajor        int
+	APIMinor        int
+	FirmwareVersion string // e.g. "4.5.0" — empty if MSPFCVersion not supported
+	Variant         string // "BTFL" or "INAV"
+	UID             string // hex string
+	BlackboxDevice  int
+	Warning         string // non-empty when firmware is newer than max tested
 }
 
 // DetectionError indicates a generic MSP identification failure.
@@ -51,6 +53,7 @@ func (e *BlackboxEmptyError) Error() string {
 // Using an interface allows testing without a real serial port.
 type MSPClient interface {
 	GetAPIVersion() (int, int, error)
+	GetFCVersion() (string, error)
 	GetFCVariant() (string, error)
 	GetUID() (string, error)
 	GetBlackboxConfig() (int, error)
@@ -58,12 +61,14 @@ type MSPClient interface {
 
 // Detect runs the MSP handshake and returns FC info.
 //
-// Steps (matching the Python detect_fc):
+// Steps:
 //  1. GetAPIVersion — log result; wrap errors as DetectionError
 //  2. GetFCVariant  — check against SupportedVariants; NotSupportedError if unknown
-//  3. GetUID        — use "unknown" on error
-//  4. GetBlackboxConfig — BTFL queries MSP; INAV skips (assumes flash)
-//  5. SDCard device → SDCardError
+//  3. GetFCVersion  — human-readable firmware version string (best effort)
+//  4. CheckVersion  — VersionTooOldError = hard stop; VersionTooNewError = warning
+//  5. GetUID        — use "unknown" on error
+//  6. GetBlackboxConfig — BTFL queries MSP; INAV skips (assumes flash)
+//  7. SDCard device → SDCardError
 func Detect(client MSPClient) (*FCInfo, error) {
 	// 1. API version
 	major, minor, err := client.GetAPIVersion()
@@ -86,7 +91,28 @@ func Detect(client MSPClient) (*FCInfo, error) {
 		return nil, &NotSupportedError{Variant: variant}
 	}
 
-	// 3. UID — best effort
+	// 3. Firmware version string (best effort — some older FC builds don't support this)
+	firmwareVersion := ""
+	if fv, err := client.GetFCVersion(); err == nil {
+		firmwareVersion = fv
+		slog.Info("FC firmware version", "version", firmwareVersion)
+	} else {
+		slog.Debug("MSPFCVersion not available", "error", err)
+	}
+
+	// 4. Version check — block if too old, warn if too new
+	warning := ""
+	if verr := CheckVersion(variant, firmwareVersion, major, minor); verr != nil {
+		switch verr.(type) {
+		case *VersionTooOldError:
+			return nil, verr
+		case *VersionTooNewError:
+			warning = verr.Error()
+			slog.Warn("FC firmware newer than tested", "warning", warning)
+		}
+	}
+
+	// 5. UID — best effort
 	uid := "unknown"
 	if u, err := client.GetUID(); err == nil {
 		uid = u
@@ -95,7 +121,7 @@ func Detect(client MSPClient) (*FCInfo, error) {
 		slog.Warn("could not read FC UID, using 'unknown'")
 	}
 
-	// 4. Blackbox config
+	// 6. Blackbox config
 	bbDevice := msp.BlackboxDeviceNone
 	if variant == msp.BTFLVariant {
 		deviceType, err := client.GetBlackboxConfig()
@@ -112,16 +138,18 @@ func Detect(client MSPClient) (*FCInfo, error) {
 		slog.Info("non-Betaflight FC — skipping BLACKBOX_CONFIG, assuming flash")
 	}
 
-	// 5. SD card → error
+	// 7. SD card → error
 	if bbDevice == msp.BlackboxDeviceSDCard {
 		return nil, &SDCardError{}
 	}
 
 	return &FCInfo{
-		APIMajor:       major,
-		APIMinor:       minor,
-		Variant:        variant,
-		UID:            uid,
-		BlackboxDevice: bbDevice,
+		APIMajor:        major,
+		APIMinor:        minor,
+		FirmwareVersion: firmwareVersion,
+		Variant:         variant,
+		UID:             uid,
+		BlackboxDevice:  bbDevice,
+		Warning:         warning,
 	}, nil
 }

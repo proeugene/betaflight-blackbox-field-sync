@@ -105,7 +105,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - automated tests passing: **71 tests** (Go, with race detector)
 - vet and build checks passing
 - cross-compilation verified: ARM6 (Pi Zero W) and ARM64 (Pi Zero 2 W)
-- version: **0.3.9** (Go rewrite)
+- version: **0.4.0** (Go rewrite)
 
 ### Important scope boundary
 
@@ -114,6 +114,26 @@ This project is for **internal SPI flash blackbox** workflows (Betaflight and iN
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.4.0 — FC Firmware Version Handling
+
+### Hard block for too-old firmware
+- Betaflight older than 4.0 (MSP API < 1.41) is now detected and rejected with a clear error message
+- iNav older than 2.6 (MSP API < 1.40) is similarly rejected
+- Root cause: `MSP_DATAFLASH_READ` changed wire format in BF 4.0 — older firmware produces corrupted data if read with the current parser
+- Error message names the detected FC, its firmware version, and the minimum required version
+
+### Soft warning for untested-new firmware
+- Firmware newer than the max tested version (BF 4.6 / iNav 7.0) shows an amber warning banner in the dashboard
+- Sync proceeds normally — the warning is informational ("may work, please report")
+
+### FC identity shown in dashboard
+- After a successful MSP handshake, the dashboard shows: `⚡ FC: Betaflight 4.5.0  (API 1.46)` 
+- Clears between sessions so stale info never shows during re-identification
+
+### New files
+- `internal/fc/versions.go` — version bounds + `CheckVersion()` function
+- `internal/fc/versions_test.go` — boundary tests for both BTFL and INAV variants
 
 ## v0.3.9 — Hotspot Boot Fixes
 

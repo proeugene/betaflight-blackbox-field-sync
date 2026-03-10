@@ -156,6 +156,19 @@ func (c *Client) GetFCVariant() (string, error) {
 	return string(f.Payload), nil
 }
 
+// GetFCVersion returns the firmware version string (e.g. "4.5.0").
+// The payload is three bytes: [major, minor, patch].
+func (c *Client) GetFCVersion() (string, error) {
+	f, err := c.Request(MSPFCVersion, nil)
+	if err != nil {
+		return "", err
+	}
+	if len(f.Payload) < 3 {
+		return "", fmt.Errorf("MSP_FC_VERSION payload too short (%d bytes)", len(f.Payload))
+	}
+	return fmt.Sprintf("%d.%d.%d", f.Payload[0], f.Payload[1], f.Payload[2]), nil
+}
+
 // GetUID returns the 12-byte board UID as a hex string.
 func (c *Client) GetUID() (string, error) {
 	f, err := c.Request(MSPUID, nil)
