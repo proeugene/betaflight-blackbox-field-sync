@@ -75,7 +75,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - **External deps:** `go.bug.st/serial` (serial port), `pelletier/go-toml` (config), `golang.org/x/sys` (disk stats)
 - **Protocol:** MSP v1/v2 (v2 for flash reads — 16× throughput vs v1)
 - **Target hardware:** Raspberry Pi Zero W / Zero 2 W
-- **Current version:** `0.3.5`
+- **Current version:** `0.3.7`
 
 ## Major project areas
 
@@ -105,7 +105,7 @@ Both options require leaving the field or spending money on extra hardware. This
 - automated tests passing: **71 tests** (Go, with race detector)
 - vet and build checks passing
 - cross-compilation verified: ARM6 (Pi Zero W) and ARM64 (Pi Zero 2 W)
-- version: **0.3.5** (Go rewrite)
+- version: **0.3.7** (Go rewrite)
 
 ### Important scope boundary
 
@@ -114,6 +114,20 @@ This project is for **internal SPI flash blackbox** workflows (Betaflight and iN
 It does **not** read blackbox logs stored on an FC-side SD card over MSP.
 
 ## Recent changelog
+
+## v0.3.7 — Docs Polish & SSID Fix
+
+### Documentation consistency
+- **SSID inconsistency fixed**: All docs now correctly show `BF-Blackbox` as the default Wi-Fi SSID (was `LogFalcon` in guide.html, README flow diagram, and config example — only the actual code/config had the correct value)
+- **Real-time sync progress documented**: `README.md` and `docs/guide.html` now include text mockups of the live progress display (`Syncing flash… 45%  (2.1 / 4.0 MB) · 1.2 MB/s · ~18s remaining`); `docs/guide.html` §04 explains state badge colours and what to expect
+- **PROJECT_STATUS.md**: stale `0.3.5` version metadata updated to `0.3.7`
+- All version strings bumped across all docs and site
+
+### CI/CD fixes (from v0.3.6 follow-up)
+- Binary artifacts now correctly attached to GitHub Releases (was broken — `go-ci.yml` never triggered on tag pushes)
+- `golangci-lint` pinned to `v1.64.8` (was `latest`)
+- `xz -9e` → `xz -9` in image build (saves ~5–10 min per release)
+- `gomod` added to Dependabot
 
 ## v0.3.6 — SSH Docs + Headless Boot Fix + Real-Time Sync Progress
 

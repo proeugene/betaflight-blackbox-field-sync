@@ -53,7 +53,7 @@ Your FC's flash is **never erased** until the copy is verified with SHA-256. Eve
  └──────────────────────────────────────────────────────┘
 ```
 
-Later, from any phone: connect to **`LogFalcon`** Wi-Fi → logs open in your browser → download `.bbl` files → open in Blackbox Explorer.
+Later, from any phone: connect to **`BF-Blackbox`** Wi-Fi → logs open in your browser → download `.bbl` files → open in Blackbox Explorer.
 
 ---
 
@@ -104,7 +104,7 @@ To uninstall:
 curl -sSL https://github.com/proeugene/logfalcon/raw/main/scripts/uninstall.sh | sudo bash
 ```
 
-> 💡 You can also set a specific version: `LOGFALCON_VERSION=v0.3.6 curl -sSL ... | sudo bash`
+> 💡 You can also set a specific version: `LOGFALCON_VERSION=v0.3.7 curl -sSL ... | sudo bash`
 
 ---
 
@@ -172,12 +172,26 @@ Only four patterns — unmistakable at a glance, even in direct sunlight:
 
 ## 📱 Downloading Your Logs
 
-1. **Connect** your phone or laptop to the **`LogFalcon`** Wi-Fi network
+1. **Connect** your phone or laptop to the **`BF-Blackbox`** Wi-Fi network
 2. **Your phone automatically opens the log browser** (captive portal, like airport Wi-Fi)
 3. **Browse** your sessions — grouped by FC, sorted by date
 4. **Tap Download** → open `.bbl` in [Blackbox Explorer](https://github.com/betaflight/blackbox-log-viewer)
 
 > If the captive portal doesn't pop up, open **`http://logfalcon.local`** or **`http://192.168.4.1`** in any browser.
+
+While the FC is plugged in and syncing, the dashboard shows **real-time progress** — you can watch it update live from your phone:
+
+```
+┌─────────────────────────────────────────────────┐
+│  LogFalcon                    ⚙  [Syncing 45%] │
+├─────────────────────────────────────────────────┤
+│  Syncing flash… 45%  (2.1 / 4.0 MB)            │
+│  ████████████░░░░░░░░░░░░░░░░░                  │
+│                          1.2 MB/s · ~18s left   │
+└─────────────────────────────────────────────────┘
+```
+
+After the sync completes, the dashboard switches to the log browser:
 
 ```
 ┌─────────────────────────────────────────────────┐
