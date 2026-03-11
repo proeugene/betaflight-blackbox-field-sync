@@ -2,6 +2,30 @@
 
 All notable changes to LogFalcon are documented here.
 
+## [v0.4.4] — 2026-03
+
+### Fixed — SSH password (pi/logfalcon) and captive portal URL routing
+
+**SSH password was never being set (account locked):**
+In v0.4.3 we masked `userconfig.service` to prevent the Bookworm first-boot wizard. This was wrong — `userconfig.service` is also responsible for reading `/boot/firmware/userconf.txt` and applying the password. With it masked, the `pi` account was left locked, making SSH impossible with any password.
+
+Fix: removed the masking. `userconf.txt` (with the `logfalcon` password hash) is still created at build time. When `userconf.txt` exists, the service applies it **silently** with no interactive wizard. The wizard only appears when the file is missing.
+
+**SSH credentials: `pi` / `logfalcon`**
+
+**Any URL now works while connected to LogFalcon WiFi:**
+iOS and Android route all app traffic over cellular when they detect "no internet" on a WiFi network. Our captive portal probe handlers were returning a redirect page, which told the OS "no internet here". After the user dismissed the captive portal popup once, all subsequent traffic went over cellular — making every URL unreachable on the hotspot.
+
+Fix: captive probe paths now return the OS-specific "internet OK" responses:
+- `/hotspot-detect.html`, `/library/test/success.html` → Apple success HTML (iOS/macOS)
+- `/generate_204`, `/gen_204` → HTTP 204 (Android)
+- `/ncsi.txt` → `Microsoft NCSI` (Windows)
+- `/connecttest.txt` → `Microsoft Connect Test` (Windows)
+
+iOS/Android now keep all traffic on the Wi-Fi interface. Since dnsmasq resolves all DNS to `192.168.4.1`, any URL in the phone's browser hits our server and shows the LogFalcon dashboard.
+
+---
+
 ## [v0.4.3] — 2026-03
 
 ### Fixed — Wi-Fi hotspot (again): NetworkManager was taking over wlan0

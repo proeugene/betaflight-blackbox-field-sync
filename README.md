@@ -104,7 +104,7 @@ To uninstall:
 curl -sSL https://github.com/proeugene/logfalcon/raw/main/scripts/uninstall.sh | sudo bash
 ```
 
-> 💡 You can also set a specific version: `LOGFALCON_VERSION=v0.4.3 curl -sSL ... | sudo bash`
+> 💡 You can also set a specific version: `LOGFALCON_VERSION=v0.4.4 curl -sSL ... | sudo bash`
 
 ---
 

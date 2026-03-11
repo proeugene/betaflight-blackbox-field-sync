@@ -76,12 +76,17 @@ ln -sf /dev/null /etc/systemd/system/NetworkManager.service
 ln -sf /dev/null /etc/systemd/system/NetworkManager-wait-online.service
 ln -sf /dev/null /etc/systemd/system/ModemManager.service
 
-# userconfig.service — Bookworm first-boot wizard (shows "enter username" prompt).
-# pi-gen's export-image stage installs userconf-pi AFTER our custom stage runs,
-# which re-creates the multi-user.target.wants symlink. Masking with /dev/null
-# prevents any re-enable: masked units cannot be started or re-enabled.
-rm -f /etc/systemd/system/multi-user.target.wants/userconfig.service
-ln -sf /dev/null /etc/systemd/system/userconfig.service
+# userconfig.service — Bookworm first-boot credential setup.
+# This service reads /boot/firmware/userconf.txt and applies the username/password.
+# We DO want it to run — our 00-run.sh creates userconf.txt with the hashed
+# 'logfalcon' password. When the file exists, the service applies it silently
+# with no interactive prompt. The wizard only appears if userconf.txt is MISSING.
+# Do NOT mask this service: masking it prevents the password from ever being set,
+# locking the pi account and making SSH impossible.
+#
+# The export-image stage re-enables this via its userconf-pi package install,
+# which is fine — we want it to run exactly once on first boot.
+# (No action needed here — just let it run.)
 
 # Cleanup
 rm -rf "$REPO_DIR"
