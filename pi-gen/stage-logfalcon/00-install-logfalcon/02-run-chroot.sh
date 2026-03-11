@@ -63,6 +63,9 @@ interface=wlan0
 bind-interfaces
 dhcp-range=192.168.4.2,192.168.4.20,24h
 dhcp-option=option:router,${HOTSPOT_IP}
+# Explicit alias — http://log.falcon opens the dashboard from any browser
+address=/log.falcon/${HOTSPOT_IP}
+# Wildcard catch-all — any other URL also resolves to the Pi
 address=/#/${HOTSPOT_IP}
 EOF
 

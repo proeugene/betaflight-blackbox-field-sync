@@ -55,7 +55,7 @@ Your FC's flash is **never erased** until the copy is verified with SHA-256. Eve
  └──────────────────────────────────────────────────────┘
 ```
 
-Later, from any phone: connect to **`LogFalcon`** Wi-Fi → logs open in your browser → download `.bbl` files → open in Blackbox Explorer.
+Later, from any phone: connect to **`LogFalcon`** Wi-Fi → open **`http://log.falcon`** → download `.bbl` files → open in Blackbox Explorer.
 
 ---
 
@@ -179,7 +179,7 @@ Only four patterns — unmistakable at a glance, even in direct sunlight:
 3. **Browse** your sessions — grouped by FC, sorted by date
 4. **Tap Download** → open `.bbl` in [Blackbox Explorer](https://github.com/betaflight/blackbox-log-viewer)
 
-> If the captive portal doesn't pop up, open **`http://logfalcon.local`** or **`http://192.168.4.1`** in any browser.
+> If the captive portal doesn't pop up, type **`http://log.falcon`** in any browser — it works on any device connected to the hotspot.
 
 While the FC is plugged in and syncing, the dashboard shows **real-time progress** — you can watch it update live from your phone:
 
@@ -270,7 +270,7 @@ journalctl -u "logfalcon@ttyACM0" -n 50
 ```bash
 journalctl -u logfalcon-web -f
 ```
-If `logfalcon.local` doesn't resolve, use `http://192.168.4.1` directly.
+If the dashboard doesn't load, try `http://log.falcon` or `http://192.168.4.1` directly.
 </details>
 
 <details>
