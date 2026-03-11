@@ -1,6 +1,8 @@
 # LogFalcon
 
 [![CI](https://github.com/proeugene/logfalcon/actions/workflows/go-ci.yml/badge.svg)](https://github.com/proeugene/logfalcon/actions/workflows/go-ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/proeugene/logfalcon?label=download&color=success)](https://github.com/proeugene/logfalcon/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Clear your FC's blackbox flash in the field. No laptop. No dongles. Keep flying.**
 
@@ -140,19 +142,19 @@ passwd
 
 ## 🛒 What You Need
 
-| Part | Notes |
-|------|-------|
-| **Raspberry Pi Zero W** or **Zero 2 W** | Zero 2 W is faster. Both work. |
-| **microSD card** (16 GB+) | Stores the OS + all your flight logs |
-| **USB OTG cable** | Micro-USB → USB-A female |
-| **USB-A to micro-USB cable** | Connects the OTG adapter → FC |
-| **USB battery bank** | Powers the Pi |
-
-No extra hardware needed — LogFalcon uses the Pi's built-in ACT LED.
+| Part | Where to get it |
+|------|-----------------|
+| **[Raspberry Pi Zero 2 W](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)** | [Raspberry Pi](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) · [Adafruit](https://www.adafruit.com/product/5291) · [Pimoroni](https://shop.pimoroni.com/products/raspberry-pi-zero-2-w) · Amazon |
+| **microSD card** (16 GB+) | Any Class 10 or faster — SanDisk, Samsung, etc. |
+| **[USB OTG cable](https://www.amazon.com/s?k=micro+usb+otg+cable)** | Micro-USB → USB-A female (short is better) |
+| **[USB-A to micro-USB cable](https://www.amazon.com/s?k=usb+a+to+micro+usb+cable+short)** | Connects the OTG adapter to your FC |
+| **USB battery bank** | Any 5V/1A+ bank — one you already have is fine |
 
 > ⚠️ **Pi Zero has two micro-USB ports:**  
 > **Inner port** = OTG/data → plug your FC here  
 > **Outer port** = PWR_IN → plug your battery bank here
+
+> 💡 **Pi Zero W vs Zero 2 W:** Both work. Zero 2 W syncs ~2× faster (~30 s vs ~60 s on a full 16 MB flash).
 
 ---
 
@@ -457,7 +459,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, how to submit PRs, and how
 If LogFalcon saves your session, consider:
 
 - ⭐ **Star the repo** — helps other pilots find it
-- ☕ **[Ko-fi](https://ko-fi.com)** — one-off donation
+- ☕ **[Buy me a coffee on Ko-fi](https://ko-fi.com/logfalcon)** — one-off donation
+- 💬 **[Start a discussion](https://github.com/proeugene/logfalcon/discussions)** — share your setup, ask questions
 - 🐛 **[Report your FC board](https://github.com/proeugene/logfalcon/issues/new?template=hardware_compat.md)** — every confirmed FC helps other pilots
 
 ---
