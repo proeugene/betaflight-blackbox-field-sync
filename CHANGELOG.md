@@ -2,7 +2,24 @@
 
 All notable changes to LogFalcon are documented here.
 
+## [v0.4.6] — 2026-03
+
+### Added — `http://log.falcon` shortcut URL + community launch polish
+
+**`http://log.falcon` opens the dashboard from any device on the hotspot:**
+dnsmasq already resolves all DNS to `192.168.4.1` (wildcard catch-all). Added an explicit `address=/log.falcon/192.168.4.1` entry so the intent is clear, and updated all docs to feature this as the canonical URL pilots type when the captive portal doesn't auto-open. Much easier than `192.168.4.1`.
+
+**Community launch polish:**
+- README: Latest Release + License badges, BOM with product links (Pi Zero 2 W on Raspberry Pi/Adafruit/Pimoroni, OTG/USB cable search links), Pi Zero W vs Zero 2 W speed comparison note
+- Support section: fixed Ko-fi URL (`ko-fi.com/logfalcon`), added Discussions link
+- guide.html + index.html: footers now link to GitHub, Discussions, Ko-fi; parts grid has clickable product links
+- FC compatibility section: updated protocol row to list `ttyACM*` (STM32) and `ttyUSB*` (CP2102/CH340)
+- Troubleshooting: SOS log command now shows both `ttyACM0` and `ttyUSB0` variants
+
+---
+
 ## [v0.4.5] — 2026-03
+
 
 ### Fixed — FC detection restored + broader FC support (CP2102, CH340)
 

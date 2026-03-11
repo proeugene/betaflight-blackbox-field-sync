@@ -17,7 +17,7 @@
     <a href="index.html" class="brand" style="text-decoration:none"><span class="brand-accent">LOG</span>FALCON</a>
     <div class="nav-right">
       <a class="nav-link active" href="guide.html">Guide</a>
-      <span class="version">v0.4.5</span>
+      <span class="version">v0.4.6</span>
       <a class="nav-link" href="https://github.com/proeugene/logfalcon" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
   </nav>
@@ -291,7 +291,7 @@ idle_shutdown_minutes = 0              # 0 = never auto-shutdown</code></pre>
           </div>
           <div class="compat-item">
             <span class="compat-key">Protocol</span>
-            <span class="compat-val">MSP v1 / v2 over USB CDC-ACM</span>
+            <span class="compat-val">MSP v1 / v2 · STM32 → ttyACM* · CP2102/CH340 → ttyUSB*</span>
           </div>
           <div class="compat-item">
             <span class="compat-key">Not supported</span>
@@ -315,7 +315,8 @@ idle_shutdown_minutes = 0              # 0 = never auto-shutdown</code></pre>
           <summary>LED shows SOS / error pattern</summary>
           <div class="faq-body">
             <p>Check the sync service log:</p>
-            <pre><code>journalctl -u "logfalcon@ttyACM0" -n 50</code></pre>
+            <pre><code>journalctl -u "logfalcon@ttyACM0" -n 50   # STM32 FCs
+journalctl -u "logfalcon@ttyUSB0" -n 50   # CP2102/CH340 FCs</code></pre>
             <p>Common causes: bad USB cable, unsupported FC variant, FC not in MSP mode.</p>
           </div>
         </details>
